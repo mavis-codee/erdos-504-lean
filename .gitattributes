@@ -1,0 +1,15 @@
+# Keep the republished upstream file byte-identical to its published source.
+#
+# `Erdos504Formal/Erdos504.lean` is republished unchanged from
+# ToshiDad/erdos-504 @ fd344a9b65ecaebca66b77497fea197cb895960e, whose git
+# blob is d1add0f664ac47a4e8b4a2124f97627fff57bbda.  That blob uses CRLF line
+# endings, so end-of-line conversion must be disabled for this path: with
+# `-text` the stored blob is exactly the upstream byte sequence and can be
+# checked with
+#
+#   git cat-file blob <commit>:Erdos504Formal/Erdos504.lean | git hash-object --stdin
+#
+# which must print d1add0f664ac47a4e8b4a2124f97627fff57bbda.
+#
+# The other files in this repository are authored with LF line endings.
+Erdos504Formal/Erdos504.lean -text
