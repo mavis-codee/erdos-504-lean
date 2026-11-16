@@ -1,0 +1,1 @@
+Temporary file for a GitHub notification self-test. Safe to delete.
