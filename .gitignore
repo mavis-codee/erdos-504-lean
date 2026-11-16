@@ -1,0 +1,10 @@
+.lake/
+build/
+*.olean
+*.ilean
+*.c
+*.o
+*.a
+.lake/
+lake-packages/
+.env
