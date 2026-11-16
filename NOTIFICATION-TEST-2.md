@@ -1,0 +1,1 @@
+Second temporary file for a GitHub notification self-test.
