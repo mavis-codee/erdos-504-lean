@@ -10,10 +10,15 @@ which is the target of `JSP-000404` in the Justin Sun Prize problem bank.
 | --- | --- | --- |
 | `Erdos504Formal/Erdos504.lean` | **Republished unchanged** from [`ToshiDad/erdos-504`](https://github.com/ToshiDad/erdos-504) at commit [`fd344a9b65ecaebca66b77497fea197cb895960e`](https://github.com/ToshiDad/erdos-504/tree/fd344a9b65ecaebca66b77497fea197cb895960e) | Byte-identical to the upstream file (319,212 bytes). Original authorship and original commit dates are retained; the upstream author is the author of every declaration in this file. |
 | `Erdos504Formal/Erdos504Minimax.lean` | **New work by the submitting author.** | Defines the minimax angle `α_N` as a supremum, proves the auxiliary lemma `exists_distinct_angle_gt`, and proves the main theorem `Erdos504.erdos_504`. |
+| `Erdos504Formal/Erdos504Endpoint.lean` | **New work by the submitting author.** | Works on the endpoint `α_{2^n − 1}`: proves the sharp (`ε`-relaxed) side, the supremum half `α_{2^n − 1} ≤ π (1 − 1/n)`, and the endpoint itself **conditional** on the counting lemma `StrictCountingBound`, which is stated precisely but not proved. |
 
 The upstream file contains **no** `sorry`, no `admit` and no `native_decide`;
-the new file contains **no** `sorry` either. The whole library is therefore
+the new files contain **no** `sorry` either. The whole library is therefore
 `sorry`-free.
+
+The endpoint file is honest about its own limit: `StrictCountingBound` is a
+*hypothesis* of `erdos_504_endpoint_of_card_le`, not a theorem. No claim of a
+complete formalisation of the endpoint is made.
 
 ## What the upstream file already contained
 
