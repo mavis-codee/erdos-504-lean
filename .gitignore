@@ -8,3 +8,7 @@ build/
 .lake/
 lake-packages/
 .env
+
+# Auditor-created harness file for the optional lean-verify self-check
+# (bridge to the Formal Conjectures statement).  Not part of the submission.
+Erdos504Formal/AuditBridge.lean
