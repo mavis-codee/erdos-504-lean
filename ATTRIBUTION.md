@@ -49,6 +49,36 @@ the missing `sSup` layer.
 * The new theorem `Erdos504.erdos_504` — the statement of the problem in its
   `sSup` form — is new work and is claimed by the submitting author only.
 
+## Author identity
+
+Every commit in this repository was made by the owner of the GitHub account
+[`mavis-codee`](https://github.com/mavis-codee), whose display name is
+**Koji Tamaki**. The author address of each commit is a verified address of that
+account, so GitHub attributes every commit here to `mavis-codee`:
+
+```
+GET /repos/mavis-codee/erdos-504-lean/commits/a3e262e8fadde9a5b208495d94f4d71f0092d6db
+  .commit.author  = { name: "Mavis", email: "1183959472@qq.com", date: "2026-11-16T10:02:36Z" }
+  .commit.committer = { name: "Mavis", email: "1183959472@qq.com", date: "2026-11-16T10:02:36Z" }
+  .author.login   = "mavis-codee"
+  .committer.login = "mavis-codee"
+```
+
+Two author strings occur in the history because the author's display name and
+commit address were updated after the proof history was first pushed:
+
+| Commits | Author string | Address |
+| --- | --- | --- |
+| `a3e262e` … `f2e33a2` — the submitted proof history | `Mavis` | `1183959472@qq.com` |
+| later commits (documentation only) | `Koji Tamaki` | `kojitamaki223@gmail.com` |
+
+Both addresses are verified addresses of the same account, and **no commit
+identity was ever rewritten**: the priority anchor
+`a3e262e8fadde9a5b208495d94f4d71f0092d6db` and every commit of the submitted
+history keep their original object id, author string, author date and committer
+date. The author's public correspondence address, used for the award process, is
+`kojitamaki223@gmail.com`.
+
 ## References
 
 * G. Szekeres, *On an extremum problem in the plane*, Amer. J. Math. **63**
