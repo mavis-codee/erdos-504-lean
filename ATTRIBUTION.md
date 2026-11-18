@@ -8,9 +8,10 @@ which is the target of `JSP-000404` in the Justin Sun Prize problem bank.
 
 | File | Origin | Status |
 | --- | --- | --- |
-| `Erdos504Formal/Erdos504.lean` | **Republished unchanged** from [`ToshiDad/erdos-504`](https://github.com/ToshiDad/erdos-504) at commit [`fd344a9b65ecaebca66b77497fea197cb895960e`](https://github.com/ToshiDad/erdos-504/tree/fd344a9b65ecaebca66b77497fea197cb895960e) | Byte-identical to the upstream file (319,212 bytes). Original authorship and original commit dates are retained; the upstream author is the author of every declaration in this file. |
+| `Erdos504Formal/Erdos504.lean` | **Republished unchanged** from [`ToshiDad/erdos-504`](https://github.com/ToshiDad/erdos-504) at commit [`fd344a9b65ecaebca66b77497fea197cb895960e`](https://github.com/ToshiDad/erdos-504/tree/fd344a9b65ecaebca66b77497fea197cb895960e) | Byte-identical to the upstream file (312,682 bytes). Original authorship and original commit dates are retained; the upstream author is the author of every declaration in this file. |
 | `Erdos504Formal/Erdos504Minimax.lean` | **New work by the submitting author.** | Defines the minimax angle `α_N` as a supremum, proves the auxiliary lemma `exists_distinct_angle_gt`, and proves the main theorem `Erdos504.erdos_504`. |
 | `Erdos504Formal/Erdos504Endpoint.lean` | **New work by the submitting author.** | Works on the endpoint `α_{2^n − 1}`: proves the sharp (`ε`-relaxed) side, the supremum half `α_{2^n − 1} ≤ π (1 − 1/n)`, and the endpoint itself **conditional** on the counting lemma `StrictCountingBound`, which is stated precisely but not proved. |
+| `Erdos504Formal/AuditBridge.lean` | **New work by the submitting author.** | Statement-correspondence bridge: `minimaxAngle_eq_fc` shows that the submitted definition of the minimax angle is definitionally the Formal Conjectures one, and `intended_main_fc` derives the Formal Conjectures statement from the submitted theorem. The six-line definition `fcMinimaxAngle` is copied verbatim from `FormalConjectures/ErdosProblems/504.lean` (MIT licence). It contains no part of the proof itself. |
 
 The upstream file contains **no** `sorry`, no `admit` and no `native_decide`;
 the new files contain **no** `sorry` either. The whole library is therefore
@@ -70,7 +71,7 @@ commit address were updated after the proof history was first pushed:
 | Commits | Author string | Address |
 | --- | --- | --- |
 | `a3e262e` … `f2e33a2` — the submitted proof history | `Mavis` | `1183959472@qq.com` |
-| later commits (documentation only) | `Koji Tamaki` | `kojitamaki223@gmail.com` |
+| later commits (documentation and the statement-correspondence bridge) | `Koji Tamaki` | `kojitamaki223@gmail.com` |
 
 Both addresses are verified addresses of the same account, and **no commit
 identity was ever rewritten**: the priority anchor

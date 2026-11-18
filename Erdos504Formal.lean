@@ -8,7 +8,10 @@ Umbrella module for the `Erdos504Formal` library.
 - `Erdos504Formal.Erdos504Endpoint` — the endpoint `α_{2^n - 1}`: the sharp
   (`ε`-relaxed) side is proved, the endpoint itself is proved conditional on the
   strict counting bound `StrictCountingBound`.
+- `Erdos504Formal.AuditBridge` — the statement-correspondence bridge to the
+  Formal Conjectures statement of the problem.
 -/
 import Erdos504Formal.Erdos504
 import Erdos504Formal.Erdos504Minimax
 import Erdos504Formal.Erdos504Endpoint
+import Erdos504Formal.AuditBridge

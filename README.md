@@ -33,6 +33,7 @@ set of the plane. The value for `N = 2^n` is the Erdős–Szekeres (1960) value
 | `Erdos504Formal/Erdos504.lean` | Republished unchanged from [`ToshiDad/erdos-504`](https://github.com/ToshiDad/erdos-504) @ `fd344a9b65ecaebca66b77497fea197cb895960e`: the Szekeres (1941) bounds and the Erdős–Szekeres (1960) theorem, sorry-free. See [ATTRIBUTION.md](./ATTRIBUTION.md). |
 | `Erdos504Formal/Erdos504Minimax.lean` | New work: the `sSup` definition of the minimax angle, the auxiliary lemma `exists_distinct_angle_gt`, and the main theorem `erdos_504`. |
 | `Erdos504Formal/Erdos504Endpoint.lean` | New work: the endpoint `α_{2^n − 1}`. The sharp (`ε`-relaxed) side and the reduction of the endpoint to one counting lemma are proved; the endpoint itself is proved **conditional** on `StrictCountingBound`. | |
+| `Erdos504Formal/AuditBridge.lean` | New work: the statement-correspondence bridge to the Formal Conjectures statement of the problem — `minimaxAngle_eq_fc` (the submitted definition is definitionally the Formal Conjectures one, by `rfl`) and `intended_main_fc` (the submitted theorem implies the Formal Conjectures statement). Contains no part of the proof itself. | |
 
 ## The endpoint `α_{2^n − 1}`
 
@@ -101,12 +102,13 @@ elan toolchain install leanprover/lean4:v4.33.0
 # 2. fetch the pinned dependencies and the Mathlib build cache
 lake exe cache get
 
-# 3. build the library (the three Lean files)
+# 3. build the library (the four Lean files)
 lake build
 
 # 4. type-check the target theorems directly
 lake env lean Erdos504Formal/Erdos504Minimax.lean
 lake env lean Erdos504Formal/Erdos504Endpoint.lean
+lake env lean Erdos504Formal/AuditBridge.lean
 ```
 
 ## Axiom audit
@@ -129,6 +131,8 @@ with the following appended to the file (or in a scratch copy):
 #print axioms Erdos504.minimaxAngle_card_sub_one_le
 #print axioms Erdos504.erdos_504_endpoint_exists_of_card_le
 #print axioms Erdos504.erdos_504_endpoint_of_card_le
+#print axioms Erdos504.minimaxAngle_eq_fc
+#print axioms Erdos504.intended_main_fc
 ```
 
 Expected output for every line:
