@@ -1690,3 +1690,268 @@ theorem hull_card_le {n : ℕ} (hn : 3 ≤ n) {m : ℕ} {A : Fin m → ℝ}
     exact lt_of_mul_lt_mul_right h5 (le_of_lt hπ)
   have hnat : m < 2 * n := by exact_mod_cast h4
   omega
+
+/-- If the integer span `Q - P` is at most `n - 2`, then no integer in `[P, Q]`
+is congruent to `Q + 1` mod `n`. -/
+lemma emod_ne_of_span_le {n : ℕ} (hn : 3 ≤ n) {P Q j : ℤ}
+    (hPQ : Q - P ≤ (n:ℤ) - 2) (hjP : P ≤ j) (hjQ : j ≤ Q) :
+    j % (n:ℤ) ≠ (Q + 1) % (n:ℤ) := by
+  have hn0 : (0:ℤ) < n := by exact_mod_cast (show 0 < n by omega)
+  intro hjmod
+  have h1 := Int.emod_eq_emod_iff_emod_sub_eq_zero.mp hjmod
+  obtain ⟨t, ht⟩ := Int.dvd_iff_emod_eq_zero.mpr h1
+  have hlo : -(n:ℤ) < j - (Q + 1) := by omega
+  have hhi : j - (Q + 1) < 0 := by omega
+  have ht0 : t ≠ 0 := by
+    intro h
+    rw [h, mul_zero] at ht
+    omega
+  rcases le_or_gt (0:ℤ) t with ht' | ht'
+  · have h1 : 1 ≤ t := by omega
+    have h2 : (n:ℤ) * 1 ≤ (n:ℤ) * t :=
+      mul_le_mul_of_nonneg_left h1 hn0.le
+    rw [mul_one] at h2
+    linarith [h2, hhi]
+  · have h1 : t ≤ -1 := by omega
+    have h2 : (n:ℤ) * t ≤ (n:ℤ) * (-1) :=
+      mul_le_mul_of_nonneg_left h1 hn0.le
+    rw [mul_neg_one] at h2
+    linarith [h2, hlo]
+
+/-- If the sector spans sum to `mn - 2n` and the hull has at most `2n - 1`
+vertices, some span is at most `n - 2`. -/
+lemma exists_small_span {n m : ℕ} (hn : 3 ≤ n) {a : Fin m → ℤ}
+    (hsum : ∑ i : Fin m, a i = (m:ℤ) * n - 2 * n)
+    (hcard : m ≤ 2 * n - 1) :
+    ∃ i : Fin m, a i ≤ (n:ℤ) - 2 := by
+  by_contra hall
+  have hge : ∀ i, (n:ℤ) - 1 ≤ a i := by
+    intro i
+    by_contra hi
+    exact hall ⟨i, by linarith⟩
+  have hsumge : (m:ℤ) * ((n:ℤ) - 1) ≤ ∑ i : Fin m, a i := by
+    have h : ∑ i : Fin m, ((n:ℤ) - 1) ≤ ∑ i : Fin m, a i :=
+      Finset.sum_le_sum (fun i _ => hge i)
+    have hconstn : ∑ _i : Fin m, ((n:ℤ) - 1) = (m:ℤ) * ((n:ℤ) - 1) := by
+      rw [Finset.sum_const, nsmul_eq_mul, Finset.card_univ, Fintype.card_fin]
+    rwa [hconstn] at h
+  rw [hsum] at hsumge
+  have hex : (m:ℤ) * ((n:ℤ) - 1) = (m:ℤ) * (n:ℤ) - (m:ℤ) := by ring
+  rw [hex] at hsumge
+  have hlt : (m:ℤ) < 2 * (n:ℤ) := by
+    have h1 : (m:ℕ) < 2 * n := by omega
+    exact_mod_cast h1
+  linarith
+
+/-- The sector spans `⌊n(θ i + A i)/π⌋ - ⌊n θ i /π⌋` sum to `mn - 2n`. -/
+lemma sum_sector_spans {n m : ℕ} (w : Fin m → ℂ)
+    {θ A : Fin m → ℝ}
+    (hA : ∑ i : Fin m, A i = (m:ℝ) * π - 2 * π)
+    (hm3 : 3 ≤ m)
+    (hne : ∀ i, w i ≠ w (finRotate m i))
+    (hsucc : ∀ i, w (finRotate m i) - w i
+      = ((‖w (finRotate m i) - w i‖ : ℝ) : ℂ) * Complex.exp ((θ i : ℂ) * Complex.I))
+    (hpred : ∀ i, w ((finRotate m).symm i) - w i
+      = ((‖w ((finRotate m).symm i) - w i‖ : ℝ) : ℂ)
+        * Complex.exp (((θ i + A i : ℝ) : ℂ) * Complex.I)) :
+    ∑ i : Fin m, (⌊(n:ℝ) * (θ i + A i) / π⌋ - ⌊(n:ℝ) * θ i / π⌋)
+      = (m:ℤ) * n - 2 * n := by
+  classical
+  have hπne : (π:ℝ) ≠ 0 := Real.pi_ne_zero
+  have hrot : ∀ i : Fin m, ∃ μ : ℤ,
+      θ (finRotate m i) + A (finRotate m i) = θ i + π + 2 * π * μ := by
+    intro i
+    have h1 := hpred (finRotate m i)
+    rw [Equiv.symm_apply_apply] at h1
+    exact edge_rotation_rule (v := w i) (v' := w (finRotate m i))
+      (θ := θ i) (θ' := θ (finRotate m i)) (A' := A (finRotate m i))
+      (ℓ := ‖w (finRotate m i) - w i‖) (ℓ' := ‖w i - w (finRotate m i)‖)
+      (norm_pos_iff.mpr (sub_ne_zero.mpr (Ne.symm (hne i))))
+      (norm_pos_iff.mpr (sub_ne_zero.mpr (hne i))) (hsucc i) h1
+  choose! μ hμ using hrot
+  have hQnext : ∀ i : Fin m,
+      ⌊(n:ℝ) * (θ (finRotate m i) + A (finRotate m i)) / π⌋
+        = ⌊(n:ℝ) * θ i / π⌋ + ((n:ℤ) + 2 * (n:ℤ) * μ i) := by
+    intro i
+    have hne : (π:ℝ) ≠ 0 := Real.pi_ne_zero
+    have h1 : (n:ℝ) * (θ i + π + 2 * π * (μ i : ℝ)) / π
+        = (n:ℝ) * θ i / π + ((n:ℝ) + 2 * (n:ℝ) * (μ i : ℝ)) := by
+      have hd : (n:ℝ) * (θ i + π + 2 * π * (μ i : ℝ))
+          = (n:ℝ) * θ i + (n:ℝ) * π + (n:ℝ) * (2 * π * (μ i : ℝ)) := by ring
+      have hcancel : ∀ x : ℝ, x * π / π = x := fun x => by
+        have hp : (π:ℝ) ≠ 0 := Real.pi_ne_zero
+        field_simp
+      rw [hd, add_div, add_div, hcancel]
+      have hz : (n:ℝ) * (2 * π * (μ i : ℝ)) / π = 2 * (n:ℝ) * (μ i : ℝ) := by
+        have he : (n:ℝ) * (2 * π * (μ i : ℝ)) = (2 * (n:ℝ) * (μ i : ℝ)) * π := by ring
+        rw [he, hcancel]
+      rw [hz]
+      ring
+    have h2 : (n:ℝ) * θ i / π + ((n:ℝ) + 2 * (n:ℝ) * (μ i : ℝ))
+        = (n:ℝ) * θ i / π + ↑((n:ℤ) + 2 * (n:ℤ) * μ i) := by
+      push_cast
+      ring
+    rw [hμ i, h1, h2, Int.floor_add_intCast]
+  have hmu1 : ∑ i : Fin m, μ i = -1 := by
+    have hkey : ∀ i : Fin m, (θ (finRotate m i) : ℝ)
+        = θ i + π - A (finRotate m i) + 2 * π * (μ i : ℝ) := fun i => by
+      linarith [hμ i]
+    have hsumθ : ∑ i : Fin m, (θ (finRotate m i) : ℝ) = ∑ i : Fin m, θ i :=
+      Equiv.sum_comp (finRotate m) θ
+    have h0 : ∑ i : Fin m, θ i
+        = ∑ i : Fin m, (θ i + π - A (finRotate m i) + 2 * π * (μ i : ℝ)) := by
+      rw [← hsumθ]
+      exact Finset.sum_congr rfl (fun i _ => hkey i)
+    have hexp : ∑ i : Fin m, (θ i + π - A (finRotate m i) + 2 * π * (μ i : ℝ))
+        = ∑ i : Fin m, θ i + ((m:ℝ) * π - ∑ i : Fin m, A i)
+          + 2 * π * (∑ i : Fin m, μ i) := by
+      have e1 : ∀ i : Fin m, (θ i + π - A (finRotate m i) + 2 * π * (μ i : ℝ))
+          = (θ i + π - A (finRotate m i)) + 2 * π * (μ i : ℝ) := fun i => by ring
+      rw [Finset.sum_congr rfl (fun i _ => e1 i), Finset.sum_add_distrib,
+        Finset.sum_sub_distrib, Finset.sum_add_distrib]
+      have hπsum : ∑ _i : Fin m, (π:ℝ) = (m:ℝ) * π := by
+        rw [Finset.sum_const, nsmul_eq_mul, Finset.card_univ, Fintype.card_fin]
+      rw [hπsum, Equiv.sum_comp (finRotate m) (fun j => A j), ← Finset.mul_sum]
+      push_cast
+      ring
+    rw [hexp] at h0
+    have hcancel : 0 = (m:ℝ) * π - ∑ i : Fin m, A i
+        + 2 * π * (∑ i : Fin m, μ i) := by
+      linarith [h0]
+    have hA' : (m:ℝ) * π - ∑ i : Fin m, A i = 2 * π := by
+      rw [hA]; ring
+    rw [hA'] at hcancel
+    have hfac : (2:ℝ) * π ≠ 0 := mul_ne_zero two_ne_zero Real.pi_ne_zero
+    have hstep : (2:ℝ) * π * (Int.cast (∑ i : Fin m, μ i))
+        = (2:ℝ) * π * (-1) := by
+      linarith [hcancel]
+    have hval : ((∑ i : Fin m, μ i : ℤ) : ℝ) = -1 :=
+      mul_left_cancel₀ hfac hstep
+    exact_mod_cast hval
+  have hsumQP : ∑ i : Fin m, (⌊(n:ℝ) * (θ i + A i) / π⌋ - ⌊(n:ℝ) * θ i / π⌋)
+      = ∑ i : Fin m, ⌊(n:ℝ) * (θ i + A i) / π⌋ - ∑ i : Fin m, ⌊(n:ℝ) * θ i / π⌋ := by
+    rw [Finset.sum_sub_distrib]
+  have hQrot : ∑ i : Fin m, ⌊(n:ℝ) * (θ i + A i) / π⌋
+      = ∑ i : Fin m, ⌊(n:ℝ) * (θ (finRotate m i) + A (finRotate m i)) / π⌋ :=
+    (Equiv.sum_comp (finRotate m) (fun j => ⌊(n:ℝ) * (θ j + A j) / π⌋)).symm
+  have hQexpand : ∑ i : Fin m, ⌊(n:ℝ) * (θ (finRotate m i) + A (finRotate m i)) / π⌋
+      = ∑ i : Fin m, ⌊(n:ℝ) * θ i / π⌋ + (m:ℤ) * n + 2 * (n:ℤ) * (∑ i : Fin m, μ i) := by
+    rw [Finset.sum_congr rfl (fun i _ => hQnext i), Finset.sum_add_distrib,
+      Finset.sum_add_distrib]
+    have hconstn : ∑ _i : Fin m, ((n:ℤ)) = (m:ℤ) * n := by
+      rw [Finset.sum_const, nsmul_eq_mul, Finset.card_univ, Fintype.card_fin]
+    have hconstmu : ∑ i : Fin m, (2 * (n:ℤ) * μ i)
+        = 2 * (n:ℤ) * (∑ i : Fin m, μ i) := by
+      rw [← Finset.mul_sum]
+    rw [hconstn, hconstmu, hmu1]
+    ring
+  rw [hsumQP, hQrot, hQexpand, hmu1]
+  ring
+
+/-- **Hull isolation.**  Under the strict angle bound there is a hull vertex
+`w i` and a colour `k` such that no other point of `S` has colour `k` from
+`w i`. -/
+theorem exists_isolated_hull_vertex {n : ℕ} (hn : 3 ≤ n)
+    {S : Finset ℂ} (hS3 : 3 ≤ S.card)
+    (hangle : ∀ p ∈ S, ∀ q ∈ S, ∀ r ∈ S, p ≠ q → r ≠ q →
+      EuclideanGeometry.angle p q r < (1 - 1 / (n : ℝ)) * π)
+    (hgen : ∀ a ∈ S, ∀ b ∈ S, ∀ c ∈ S, a ≠ b → b ≠ c → a ≠ c →
+      ¬ Collinear ℝ ({a, b, c} : Set ℂ))
+    {m : ℕ} (w : Fin m → ℂ)
+    (hmem : ∀ i, w i ∈ extremeFinset S)
+    (hsur : ∀ v ∈ extremeFinset S, ∃ i, w i = v)
+    (hmono : StrictMono (fun i => Complex.arg (w i - szCentroid S)))
+    (hm3 : 3 ≤ m) :
+    ∃ i : Fin m, ∃ k : Fin n, ∀ q ∈ S, q ≠ w i →
+      dirIndex n (q - w i) ≠ (k : ℕ) := by
+  classical
+  obtain ⟨θ, A, hA0, hAπ, hAΘ, hwin, hsucc, hpred⟩ :=
+    exists_hull_windows hn hangle hgen w hmem hsur hmono hm3
+  have hEsub : extremeFinset S ⊆ S := fun p hp => mem_of_mem_extremeFinset hp
+  have hinj : Function.Injective w := fun x y hxy =>
+    hmono.injective (show (fun j => Complex.arg (w j - szCentroid S)) x
+      = (fun j => Complex.arg (w j - szCentroid S)) y from by simp only [hxy])
+  have himg : Finset.univ.image w = extremeFinset S := by
+    apply Finset.ext
+    intro x
+    simp only [Finset.mem_image, Finset.mem_univ, true_and]
+    constructor
+    · rintro ⟨i, -, rfl⟩
+      exact hmem i
+    · intro hx
+      obtain ⟨i, hi⟩ := hsur x hx
+      exact ⟨i, hi⟩
+  have hcardm : (extremeFinset S).card = m := by
+    rw [← himg, Finset.card_image_of_injective _ hinj, Finset.card_univ,
+      Fintype.card_fin]
+  have hcard2 : 2 < S.card := by
+    have h := Finset.card_le_card hEsub
+    rw [hcardm] at h
+    omega
+  have ht : ∀ i, ∃ r t : ℝ, 0 < r ∧ 0 < t ∧ t < A i ∧
+      szCentroid S - w i = (r : ℂ) * Complex.exp (((θ i + t : ℝ) : ℂ) * Complex.I) :=
+    fun i => centroid_dir_in_window_strict (mem_of_mem_extremeFinset (hmem i))
+      hcard2 hgen (hA0 i) (hAπ i) (hwin i)
+  have hap : ∑ i : Fin m, A i = (m:ℝ) * π - 2 * π :=
+    sum_window_apertures w hS3 hgen hmem hsur hmono hm3 hAπ hsucc hpred ht
+  have hmle : m ≤ 2 * n - 1 := hull_card_le hn hAΘ hap hm3
+  have hne : ∀ i, w i ≠ w (finRotate m i) := by
+    intro i h
+    exact finRotate_ne_self hm3 i (hinj h).symm
+  have hspan : ∑ i : Fin m, (⌊(n:ℝ) * (θ i + A i) / π⌋ - ⌊(n:ℝ) * θ i / π⌋)
+      = (m:ℤ) * n - 2 * n :=
+    sum_sector_spans w hap hm3 hne hsucc hpred
+  obtain ⟨i0, hi0⟩ := exists_small_span hn hspan hmle
+  set P := ⌊(n:ℝ) * θ i0 / π⌋ with hPdef
+  set Q := ⌊(n:ℝ) * (θ i0 + A i0) / π⌋ with hQdef
+  have hPQ : Q - P ≤ (n:ℤ) - 2 := hi0
+  have hn0 : (0:ℤ) < n := by exact_mod_cast (show 0 < n by omega)
+  have hklt : ((Q + 1) % (n:ℤ)).toNat < n := by
+    have h1 := Int.emod_lt_of_pos (Q + 1) hn0
+    have h2 : (((Q + 1) % (n:ℤ)).toNat : ℤ) = (Q + 1) % (n:ℤ) :=
+      Int.toNat_of_nonneg (Int.emod_nonneg (Q + 1) hn0.ne')
+    have h3 : (((Q + 1) % (n:ℤ)).toNat : ℤ) < (n:ℤ) := by rw [h2]; exact h1
+    exact_mod_cast h3
+  refine ⟨i0, ⟨((Q + 1) % (n:ℤ)).toNat, hklt⟩, ?_⟩
+  intro q hq hne
+  obtain ⟨r, t, hr, ht0, htA, hform⟩ := hwin i0 q hq hne
+  have hdi : dirIndex n (q - w i0)
+      = ((⌊(n:ℝ) * (θ i0 + t) / π⌋ : ℤ) % (n:ℤ)).toNat :=
+    dirIndex_polar_eq (by omega) hr hform
+  have hnR : (0:ℝ) < n := by exact_mod_cast (show 0 < n by omega)
+  have hjP : P ≤ ⌊(n:ℝ) * (θ i0 + t) / π⌋ := by
+    rw [hPdef]
+    apply Int.floor_le_floor
+    have hnp : (0:ℝ) < n / π := div_pos hnR Real.pi_pos
+    have hkey : (n:ℝ) * (θ i0 + t) / π - (n:ℝ) * θ i0 / π = (n:ℝ) / π * t := by
+      field_simp
+      ring
+    have hpos : 0 ≤ (n:ℝ) / π * t := mul_nonneg hnp.le ht0
+    rw [← sub_nonneg, hkey]
+    exact hpos
+  have hjQ : ⌊(n:ℝ) * (θ i0 + t) / π⌋ ≤ Q := by
+    rw [hQdef]
+    apply Int.floor_le_floor
+    have hnp : (0:ℝ) < n / π := div_pos hnR Real.pi_pos
+    have hkey : (n:ℝ) * (θ i0 + A i0) / π - (n:ℝ) * (θ i0 + t) / π
+        = (n:ℝ) / π * (A i0 - t) := by
+      field_simp
+      ring
+    have hAt : 0 ≤ A i0 - t := by linarith [htA]
+    have hpos : 0 ≤ (n:ℝ) / π * (A i0 - t) := mul_nonneg hnp.le hAt
+    rw [← sub_nonneg, hkey]
+    exact hpos
+  intro heq
+  have h3 : ((⌊(n:ℝ) * (θ i0 + t) / π⌋ : ℤ) % (n:ℤ)).toNat
+      = ((Q + 1) % (n:ℤ)).toNat := by
+    rw [← hdi]
+    exact heq
+  have h4 : (((⌊(n:ℝ) * (θ i0 + t) / π⌋ : ℤ) % (n:ℤ)).toNat : ℤ)
+      = (⌊(n:ℝ) * (θ i0 + t) / π⌋ : ℤ) % (n:ℤ) :=
+    Int.toNat_of_nonneg (Int.emod_nonneg _ hn0.ne')
+  have h5 : (((Q + 1) % (n:ℤ)).toNat : ℤ) = (Q + 1) % (n:ℤ) :=
+    Int.toNat_of_nonneg (Int.emod_nonneg (Q + 1) hn0.ne')
+  have h6 : (((⌊(n:ℝ) * (θ i0 + t) / π⌋ : ℤ) % (n:ℤ)).toNat : ℤ)
+      = (((Q + 1) % (n:ℤ)).toNat : ℤ) := by exact_mod_cast h3
+  rw [h4, h5] at h6
+  exact emod_ne_of_span_le hn hPQ hjP hjQ h6
