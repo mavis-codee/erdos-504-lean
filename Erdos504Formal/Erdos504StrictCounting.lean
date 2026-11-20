@@ -1352,3 +1352,341 @@ lemma centroid_dir_in_window {S : Finset ℂ} {v : ℂ} (hv : v ∈ S)
   rw [hcval']
   conv_lhs => rw [hWpolar]
   rw [hre, hexpadd]
+
+/-! ## Hull isolation via sector-span pigeonhole -/
+
+/-- The centroid difference as a weighted sum over the other points. -/
+lemma szCentroid_sub {S : Finset ℂ} {v : ℂ} (hv : v ∈ S) (hne : S.card ≠ 0) :
+    szCentroid S - v = ∑ p ∈ S.erase v, ((1 / (S.card : ℝ) : ℝ) : ℂ) • (p - v) := by
+  have hc : (S.card : ℂ) ≠ 0 := by exact_mod_cast hne
+  have hrhs : ∑ p ∈ S.erase v, ((1 / (S.card : ℝ) : ℝ) : ℂ) • (p - v)
+      = ((1 / (S.card : ℝ) : ℝ) : ℂ) • ∑ p ∈ S.erase v, (p - v) :=
+        (Finset.smul_sum).symm
+  have hsplit : ∑ p ∈ S.erase v, (p - v) = ∑ p ∈ S, (p - v) := by
+    refine Finset.sum_subset (Finset.erase_subset v S) ?_
+    intro x hx hnot
+    have hxe : x = v := by
+      by_contra hxc
+      exact hnot (Finset.mem_erase.mpr ⟨hxc, hx⟩)
+    rw [hxe, sub_self]
+  rw [szCentroid, hrhs, hsplit, Finset.sum_sub_distrib, Finset.sum_const, nsmul_eq_mul]
+  push_cast
+  simp only [smul_eq_mul]
+  field_simp
+
+/-- Imaginary part of a rotated centroid difference, as a weighted sum. -/
+lemma im_conj_smul_sum {S : Finset ℂ} {v : ℂ} (hv : v ∈ S) (hne : S.card ≠ 0)
+    (z : ℂ) :
+    (z * (szCentroid S - v)).im
+      = (1 / (S.card : ℝ)) * ∑ p ∈ S.erase v, (z * (p - v)).im := by
+  have hsub := szCentroid_sub hv hne
+  have hrotsum : z * (szCentroid S - v)
+      = ∑ p ∈ S.erase v, ((1 / (S.card : ℝ) : ℝ) : ℂ) * (z * (p - v)) := by
+    rw [hsub]
+    simp only [smul_eq_mul, Finset.mul_sum]
+    exact Finset.sum_congr rfl fun p hp => by ring
+  rw [hrotsum, Complex.im_sum]
+  have h2 : ∀ p ∈ S.erase v, (((1 / (S.card : ℝ) : ℝ) : ℂ) * (z * (p - v))).im
+      = (1 / (S.card : ℝ)) * (z * (p - v)).im := by
+    intro p hp
+    have h3 := Complex.mul_im ((1 / (S.card : ℝ) : ℝ) : ℂ) (z * (p - v))
+    rw [Complex.ofReal_re, Complex.ofReal_im, zero_mul, add_zero] at h3
+    exact h3
+  rw [Finset.sum_congr rfl h2, ← Finset.mul_sum]
+
+/-- Two distinct points of `S \ {v}` whose directions from `v` have the same
+polar parameter are collinear with `v`. -/
+lemma collinear_of_same_ray {v q₁ q₂ : ℂ} {θ : ℝ} {r₁ r₂ : ℝ}
+    (hr₁ : 0 < r₁) (hr₂ : 0 < r₂)
+    (h₁ : q₁ - v = (r₁ : ℂ) * Complex.exp ((θ : ℂ) * Complex.I))
+    (h₂ : q₂ - v = (r₂ : ℂ) * Complex.exp ((θ : ℂ) * Complex.I)) :
+    Collinear ℝ ({q₁, v, q₂} : Set ℂ) := by
+  have h₂' : q₂ - v = (r₂ : ℂ) * Complex.exp (((θ + 0 : ℝ) : ℂ) * Complex.I) := by
+    rw [h₂, add_zero]
+  have hang : EuclideanGeometry.angle q₁ v q₂ = 0 :=
+    angle_polar_eq hr₁ hr₂ (by norm_num) (by linarith [Real.pi_pos]) h₁ h₂'
+  exact EuclideanGeometry.collinear_of_angle_eq_zero hang
+
+/-- If every other point of `S` lies on one ray from `v`, three points of `S`
+are collinear — contradicting general position. -/
+lemma not_all_same_ray {S : Finset ℂ} {v : ℂ} (hv : v ∈ S) (hcard : 2 < S.card)
+    (hgen : ∀ a ∈ S, ∀ b ∈ S, ∀ c ∈ S, a ≠ b → b ≠ c → a ≠ c →
+      ¬ Collinear ℝ ({a, b, c} : Set ℂ))
+    {θ : ℝ}
+    (hform : ∀ p ∈ S, p ≠ v → ∃ r : ℝ, 0 < r ∧
+      p - v = (r : ℂ) * Complex.exp ((θ : ℂ) * Complex.I)) :
+    False := by
+  have htwo : 1 < (S.erase v).card := by
+    have h1 := Finset.card_erase_of_mem hv
+    omega
+  obtain ⟨q₁, hq₁, q₂, hq₂, hneq⟩ := Finset.one_lt_card.mp htwo
+  obtain ⟨r₁, hr₁, h₁⟩ := hform q₁ (Finset.mem_erase.mp hq₁).2 (Finset.mem_erase.mp hq₁).1
+  obtain ⟨r₂, hr₂, h₂⟩ := hform q₂ (Finset.mem_erase.mp hq₂).2 (Finset.mem_erase.mp hq₂).1
+  exact hgen q₁ (Finset.mem_erase.mp hq₁).2 v hv q₂ (Finset.mem_erase.mp hq₂).2
+    (Finset.mem_erase.mp hq₁).1 (Ne.symm (Finset.mem_erase.mp hq₂).1) hneq
+    (collinear_of_same_ray hr₁ hr₂ h₁ h₂)
+
+/-- A sine that vanishes at a point of `[0, π)` forces the point to be `0`. -/
+lemma eq_zero_of_sin_eq_zero {x : ℝ} (h0 : 0 ≤ x) (hπ : x < π)
+    (hs : Real.sin x = 0) : x = 0 := by
+  have hπpos := Real.pi_pos
+  obtain ⟨n, hn⟩ := Real.sin_eq_zero_iff.mp hs
+  have h0n : (0:ℤ) ≤ n := by
+    have h2 : (0:ℝ) * π ≤ n * π := by linarith
+    exact_mod_cast le_of_mul_le_mul_right h2 hπpos
+  have h1n : n < 1 := by
+    have h2 : n * π < (1:ℝ) * π := by linarith
+    exact_mod_cast lt_of_mul_lt_mul_right h2 (le_of_lt hπpos)
+  have hzero : n = 0 := by omega
+  rw [← hn, hzero, Int.cast_zero, zero_mul]
+
+/-- The direction from `v` to the centroid is *strictly* inside the window:
+`0 < t < A`. -/
+lemma centroid_dir_in_window_strict {S : Finset ℂ} {v : ℂ} (hv : v ∈ S)
+    (hcard : 2 < S.card)
+    (hgen : ∀ a ∈ S, ∀ b ∈ S, ∀ c ∈ S, a ≠ b → b ≠ c → a ≠ c →
+      ¬ Collinear ℝ ({a, b, c} : Set ℂ))
+    {θ A : ℝ} (hA0 : 0 ≤ A) (hAπ : A < π)
+    (hwin : ∀ q ∈ S, q ≠ v → ∃ r t : ℝ, 0 < r ∧ 0 ≤ t ∧ t ≤ A ∧
+      q - v = (r : ℂ) * Complex.exp (((θ + t : ℝ) : ℂ) * Complex.I)) :
+    ∃ r t : ℝ, 0 < r ∧ 0 < t ∧ t < A ∧
+      szCentroid S - v = (r : ℂ) * Complex.exp (((θ + t : ℝ) : ℂ) * Complex.I) := by
+  classical
+  obtain ⟨ρ, τ, hρ, hτ0, hτA, hform⟩ :=
+    centroid_dir_in_window hv (by omega) hA0 hAπ hwin
+  refine ⟨ρ, τ, hρ, ?_, ?_, hform⟩
+  · rcases lt_or_eq_of_le hτ0 with h | h
+    · exact h
+    · -- `τ = 0`: the rotated imaginary parts sum to zero, so every `t p = 0`.
+      exfalso
+      have hchoice : ∀ p ∈ S.erase v, ∃ r t : ℝ, 0 < r ∧ 0 ≤ t ∧ t ≤ A ∧
+          p - v = (r : ℂ) * Complex.exp (((θ + t : ℝ) : ℂ) * Complex.I) := by
+        intro p hp
+        have h1 := Finset.mem_erase.mp hp
+        exact hwin p h1.2 h1.1
+      choose! r t hr ht0 htA hformp using hchoice
+      set z : ℂ := (starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I)) with hz
+      have hterm : ∀ p ∈ S.erase v, (z * (p - v)).im = r p * Real.sin (t p) :=
+        fun p hp => im_conj_exp_mul_polar (hformp p hp)
+      have hnonneg : ∀ p ∈ S.erase v, 0 ≤ (z * (p - v)).im := by
+        intro p hp
+        rw [hterm p hp]
+        exact mul_nonneg (le_of_lt (hr p hp))
+          (Real.sin_nonneg_of_nonneg_of_le_pi (ht0 p hp) (by linarith [htA p hp, hAπ]))
+      have himC := im_conj_smul_sum hv (by omega) z
+      have himC0 : (z * (szCentroid S - v)).im = 0 := by
+        rw [im_conj_exp_mul_polar hform, h.symm, Real.sin_zero, mul_zero]
+      have hsum0 : ∑ p ∈ S.erase v, (z * (p - v)).im = 0 := by
+        have h1 : (1 / (S.card : ℝ)) * ∑ p ∈ S.erase v, (z * (p - v)).im = 0 := by
+          rw [← himC, himC0]
+        have hpos : (1 / (S.card : ℝ)) ≠ 0 := by
+          have h3 : (0:ℝ) < S.card := by
+            exact_mod_cast (show 0 < S.card by omega)
+          exact ne_of_gt (div_pos one_pos h3)
+        exact mul_left_cancel₀ hpos (h1.trans (mul_zero _).symm)
+      have htzero : ∀ p ∈ S.erase v, t p = 0 := by
+        intro p hp
+        have h3 : Real.sin (t p) = 0 := by
+          have h4 := hterm p hp
+          have h6 : (z * (p - v)).im = 0 := by
+            have h7 := (Finset.sum_eq_zero_iff_of_nonneg hnonneg).mp hsum0
+            exact h7 p hp
+          rw [h4] at h6
+          have hρ0 : r p ≠ 0 := ne_of_gt (hr p hp)
+          exact (mul_eq_zero.mp h6).resolve_left hρ0
+        exact eq_zero_of_sin_eq_zero (ht0 p hp) (by linarith [htA p hp, hAπ]) h3
+      apply not_all_same_ray hv hcard hgen (θ := θ)
+      intro p hp hvp
+      have hpe : p ∈ S.erase v := Finset.mem_erase.mpr ⟨hvp, hp⟩
+      refine ⟨r p, hr p hpe, ?_⟩
+      have h2 := hformp p hpe
+      rw [htzero p hpe, add_zero] at h2
+      exact h2
+  · rcases lt_or_eq_of_le hτA with h | h
+    · exact h
+    · -- `τ = A`: rotate by `θ + A`; every `t p = A`.
+      exfalso
+      have hchoice : ∀ p ∈ S.erase v, ∃ r t : ℝ, 0 < r ∧ 0 ≤ t ∧ t ≤ A ∧
+          p - v = (r : ℂ) * Complex.exp (((θ + t : ℝ) : ℂ) * Complex.I) := by
+        intro p hp
+        have h1 := Finset.mem_erase.mp hp
+        exact hwin p h1.2 h1.1
+      choose! r t hr ht0 htA hformp using hchoice
+      set z : ℂ := (starRingEnd ℂ) (Complex.exp (((θ + A : ℝ) : ℂ) * Complex.I)) with hz
+      have hterm : ∀ p ∈ S.erase v, (z * (p - v)).im = r p * Real.sin (t p - A) := by
+        intro p hp
+        have h' : p - v
+            = (r p : ℂ) * Complex.exp ((((θ + A) + (t p - A) : ℝ) : ℂ) * Complex.I) := by
+          rw [hformp p hp]
+          push_cast
+          ring
+        exact im_conj_exp_mul_polar h'
+      have hnonpos : ∀ p ∈ S.erase v, (z * (p - v)).im ≤ 0 := by
+        intro p hp
+        rw [hterm p hp]
+        have h1 : 0 ≤ A - t p := by linarith [ht0 p hp, htA p hp]
+        have h2 : A - t p ≤ π := by linarith [ht0 p hp, htA p hp, hAπ]
+        have h3 : 0 ≤ Real.sin (A - t p) :=
+          Real.sin_nonneg_of_nonneg_of_le_pi h1 h2
+        have h4 := Real.sin_neg (A - t p)
+        rw [neg_sub] at h4
+        exact mul_nonpos_of_nonneg_of_nonpos (le_of_lt (hr p hp)) (by linarith)
+      have himC := im_conj_smul_sum hv (by omega) z
+      have himC0 : (z * (szCentroid S - v)).im = 0 := by
+        have h' : szCentroid S - v
+            = (ρ : ℂ) * Complex.exp ((((θ + A) + (τ - A) : ℝ) : ℂ) * Complex.I) := by
+          rw [hform]
+          push_cast
+          ring
+        rw [im_conj_exp_mul_polar h', h, sub_self, Real.sin_zero, mul_zero]
+      have hsum0 : ∑ p ∈ S.erase v, (z * (p - v)).im = 0 := by
+        have h1 : (1 / (S.card : ℝ)) * ∑ p ∈ S.erase v, (z * (p - v)).im = 0 := by
+          rw [← himC, himC0]
+        have hpos : (1 / (S.card : ℝ)) ≠ 0 := by
+          have h3 : (0:ℝ) < S.card := by
+            exact_mod_cast (show 0 < S.card by omega)
+          exact ne_of_gt (div_pos one_pos h3)
+        exact mul_left_cancel₀ hpos (h1.trans (mul_zero _).symm)
+      have hall0 : ∀ p ∈ S.erase v, (z * (p - v)).im = 0 := by
+        intro p hp
+        have hle := hnonpos p hp
+        by_contra hne0
+        have hlt : (z * (p - v)).im < 0 := by
+          rcases lt_or_eq_of_le hle with hlt | hlt
+          · exact hlt
+          · exact absurd hlt hne0
+        have hsumlt : ∑ q ∈ S.erase v, (z * (q - v)).im < 0 := by
+          have h := Finset.sum_lt_sum (fun q hq => hnonpos q hq) ⟨p, hp, hlt⟩
+          rwa [Finset.sum_const_zero] at h
+        linarith [hsum0]
+      have htAeq : ∀ p ∈ S.erase v, t p = A := by
+        intro p hp
+        have h3 : Real.sin (t p - A) = 0 := by
+          have h4 := hterm p hp
+          have h6 := hall0 p hp
+          rw [h4] at h6
+          have hρ0 : r p ≠ 0 := ne_of_gt (hr p hp)
+          exact (mul_eq_zero.mp h6).resolve_left hρ0
+        have hlo : -π < t p - A := by linarith [ht0 p hp, htA p hp, hAπ]
+        have hhi : t p - A ≤ 0 := by linarith [htA p hp]
+        obtain ⟨n, hx⟩ := Real.sin_eq_zero_iff.mp h3
+        have hπ := Real.pi_pos
+        have hn0 : n = 0 := by
+          have hlt2 : (-1:ℤ) < n := by
+            have h1 : -(1:ℝ) * π < n * π := by linarith
+            exact_mod_cast lt_of_mul_lt_mul_right h1 (le_of_lt hπ)
+          have hle : n ≤ 0 := by
+            have h1 : n * π ≤ (0:ℝ) * π := by linarith
+            exact_mod_cast le_of_mul_le_mul_right h1 hπ
+          omega
+        have hzero : t p - A = 0 := by rw [← hx, hn0, Int.cast_zero, zero_mul]
+        linarith
+      apply not_all_same_ray hv hcard hgen (θ := θ + A)
+      intro p hp hvp
+      have hpe : p ∈ S.erase v := Finset.mem_erase.mpr ⟨hvp, hp⟩
+      refine ⟨r p, hr p hpe, ?_⟩
+      have h2 := hformp p hpe
+      rw [htAeq p hpe] at h2
+      exact h2
+
+/-- The window apertures of a convex hull sum to `mπ - 2π`. -/
+lemma sum_window_apertures {S : Finset ℂ} {m : ℕ} (w : Fin m → ℂ)
+    (hS3 : 3 ≤ S.card)
+    (hgen : ∀ a ∈ S, ∀ b ∈ S, ∀ c ∈ S, a ≠ b → b ≠ c → a ≠ c →
+      ¬ Collinear ℝ ({a, b, c} : Set ℂ))
+    (hmem : ∀ i, w i ∈ extremeFinset S)
+    (hsur : ∀ v ∈ extremeFinset S, ∃ i, w i = v)
+    (hmono : StrictMono (fun i => Complex.arg (w i - szCentroid S)))
+    (hm3 : 3 ≤ m)
+    {θ A : Fin m → ℝ}
+    (hAπ : ∀ i, A i < π)
+    (hsucc : ∀ i, w (finRotate m i) - w i
+      = ((‖w (finRotate m i) - w i‖ : ℝ) : ℂ) * Complex.exp ((θ i : ℂ) * Complex.I))
+    (hpred : ∀ i, w ((finRotate m).symm i) - w i
+      = ((‖w ((finRotate m).symm i) - w i‖ : ℝ) : ℂ)
+        * Complex.exp (((θ i + A i : ℝ) : ℂ) * Complex.I))
+    (ht : ∀ i, ∃ r t : ℝ, 0 < r ∧ 0 < t ∧ t < A i ∧
+      szCentroid S - w i = (r : ℂ) * Complex.exp (((θ i + t : ℝ) : ℂ) * Complex.I)) :
+    ∑ i : Fin m, A i = (m : ℝ) * π - 2 * π := by
+  classical
+  have hk : 0 < m := by omega
+  have hinj : Function.Injective w := fun x y hxy =>
+    hmono.injective (show (fun j => Complex.arg (w j - szCentroid S)) x
+      = (fun j => Complex.arg (w j - szCentroid S)) y from by simp only [hxy])
+  have hne : ∀ i, w i ≠ w (finRotate m i) := by
+    intro i h
+    exact finRotate_ne_self hm3 i (hinj h).symm
+  choose! ρ t hρ ht0 htA hform using ht
+  have hrot : ∀ i : Fin m, ∃ μ : ℤ,
+      θ (finRotate m i) + A (finRotate m i) = θ i + π + 2 * π * μ := by
+    intro i
+    have h1 := hpred (finRotate m i)
+    rw [Equiv.symm_apply_apply] at h1
+    exact edge_rotation_rule (v := w i) (v' := w (finRotate m i))
+      (θ := θ i) (θ' := θ (finRotate m i)) (A' := A (finRotate m i))
+      (ℓ := ‖w (finRotate m i) - w i‖) (ℓ' := ‖w i - w (finRotate m i)‖)
+      (norm_pos_iff.mpr (sub_ne_zero.mpr (Ne.symm (hne i))))
+      (norm_pos_iff.mpr (sub_ne_zero.mpr (hne i))) (hsucc i) h1
+  choose! μ hμ using hrot
+  have hcyc : ∀ i : Fin m, cycAdv w (szCentroid S) i (finRotate m i)
+      = π - A (finRotate m i) + t (finRotate m i) - t i := by
+    intro i
+    obtain ⟨h1, -⟩ := arg_conj_succ hS3 hgen w hmem hsur hmono hm3 i
+    have harg := arg_conj_centroid_succ (v := w i) (v' := w (finRotate m i))
+      (c := szCentroid S) (θ := θ i) (A := A i) (t := t i)
+      (θ' := θ (finRotate m i)) (A' := A (finRotate m i)) (t' := t (finRotate m i))
+      (ρ := ρ i) (ρ' := ρ (finRotate m i)) (m := μ i)
+      (hAπ i) (hAπ (finRotate m i)) (ht0 i) (htA i) (ht0 (finRotate m i))
+      (htA (finRotate m i)) (hform i) (hform (finRotate m i)) (hρ i) (hρ (finRotate m i))
+      (hμ i)
+    rw [← h1]
+    exact harg
+  have hsum := sum_cycAdv_succ hm3 w (szCentroid S)
+  rw [Finset.sum_congr rfl (fun i _ => hcyc i)] at hsum
+  have hexp : ∑ i : Fin m, (π - A (finRotate m i) + t (finRotate m i) - t i)
+      = (m:ℝ) * π - ∑ i : Fin m, A i := by
+    rw [Finset.sum_sub_distrib, Finset.sum_add_distrib, Finset.sum_sub_distrib]
+    have hπsum : ∑ i : Fin m, π = (m:ℝ) * π := by
+      rw [Finset.sum_const, nsmul_eq_mul, Finset.card_univ, Fintype.card_fin]
+    have hArot : ∑ i : Fin m, A (finRotate m i) = ∑ i : Fin m, A i :=
+      Equiv.sum_comp (finRotate m) (fun j => A j)
+    have htrot : ∑ i : Fin m, t (finRotate m i) = ∑ i : Fin m, t i :=
+      Equiv.sum_comp (finRotate m) (fun j => t j)
+    rw [hπsum, hArot, htrot]
+    ring
+  rw [hexp] at hsum
+  linarith
+
+/-- A hull whose windows all have aperture `< π (1 - 1/n)` has at most
+`2n - 1` vertices. -/
+theorem hull_card_le {n : ℕ} (hn : 3 ≤ n) {m : ℕ} {A : Fin m → ℝ}
+    (hA : ∀ i, A i < (1 - 1 / (n : ℝ)) * π)
+    (hsum : ∑ i : Fin m, A i = (m : ℝ) * π - 2 * π)
+    (hm3 : 3 ≤ m) :
+    m ≤ 2 * n - 1 := by
+  have hπ : (0:ℝ) < π := Real.pi_pos
+  have hn0 : 0 < n := by omega
+  have hnR : (0:ℝ) < n := by exact_mod_cast hn0
+  have hm0 : 0 < m := by omega
+  have hlt : ∑ i : Fin m, A i < (m:ℝ) * ((1 - 1 / (n : ℝ)) * π) := by
+    have h1 : ∑ i : Fin m, A i < ∑ i : Fin m, ((1 - 1 / (n : ℝ)) * π) := by
+      refine Finset.sum_lt_sum (fun i _ => le_of_lt (hA i))
+        ⟨⟨0, hm0⟩, Finset.mem_univ _, hA ⟨0, hm0⟩⟩
+    have h2 : ∑ i : Fin m, ((1 - 1 / (n : ℝ)) * π)
+        = (m:ℝ) * ((1 - 1 / (n : ℝ)) * π) := by
+      rw [Finset.sum_const, nsmul_eq_mul, Finset.card_univ, Fintype.card_fin]
+    rw [h2] at h1
+    exact h1
+  rw [hsum] at hlt
+  have hexp : (m:ℝ) * ((1 - 1 / (n : ℝ)) * π) = (m:ℝ) * π - (m:ℝ) * π / n := by
+    field_simp
+  rw [hexp] at hlt
+  have h2 : (m:ℝ) * π / n < 2 * π := by linarith
+  have h3 : (m:ℝ) * π < 2 * π * n := by
+    rw [div_lt_iff₀ hnR] at h2
+    linarith
+  have h4 : (m:ℝ) < 2 * n := by
+    have h5 : (m:ℝ) * π < (2 * n : ℝ) * π := by linarith
+    exact lt_of_mul_lt_mul_right h5 (le_of_lt hπ)
+  have hnat : m < 2 * n := by exact_mod_cast h4
+  omega
