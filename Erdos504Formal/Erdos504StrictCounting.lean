@@ -754,3 +754,104 @@ theorem emptyCount_sum_le :
             + ∑ p ∈ WB, (2 ^ emptyCountIn colorN WB p - 1) + Q.card := hstep3
         _ ≤ (2 ^ n - WA.card) + (2 ^ n - WB.card) + Q.card := hstep4
         _ = k := hlast
+
+/-! ## Geometric foundations -/
+
+/-- `2 * n < 2 ^ n` for `n ≥ 3`. -/
+lemma two_pow_gt_two_mul {n : ℕ} (hn : 3 ≤ n) : 2 * n < 2 ^ n := by
+  have h : ∀ m : ℕ, 3 ≤ m → 2 * m + 2 ≤ 2 ^ m := by
+    intro m hm
+    induction m with
+    | zero => omega
+    | succ k ih =>
+      rcases Nat.lt_or_ge k 3 with hk | hk
+      · have hk2 : k = 2 := by omega
+        subst hk2
+        norm_num
+      · have h1 := ih hk
+        have h2 : 2 ^ (k + 1) = 2 * 2 ^ k := by rw [pow_succ]; ring
+        omega
+  have h2 := h n hn
+  omega
+
+/-- The Erdős–Szekeres value is below `π`. -/
+lemma theta_lt_pi {n : ℕ} (hn : 3 ≤ n) :
+    (1 - 1 / (n : ℝ)) * π < π := by
+  have hnR : (3 : ℝ) ≤ n := by exact_mod_cast hn
+  have h1 : (0 : ℝ) < 1 / (n : ℝ) := by positivity
+  have h2 : (1 - 1 / (n : ℝ)) * π < 1 * π := mul_lt_mul_of_pos_right (by linarith) Real.pi_pos
+  linarith
+
+/-- A `Finset` of cardinality at least `3` contains three pairwise distinct
+points. -/
+lemma exists_three_distinct_sc {S : Finset ℂ} (hS : 3 ≤ S.card) :
+    ∃ x ∈ S, ∃ z ∈ S, ∃ y ∈ S, x ≠ z ∧ z ≠ y ∧ x ≠ y := by
+  have hne : S.Nonempty := by
+    rw [Finset.nonempty_iff_ne_empty]
+    intro hEmpty
+    have hcard0 : S.card = 0 := Finset.card_eq_zero.mpr hEmpty
+    omega
+  obtain ⟨x, hx⟩ := hne
+  have hcard₁ : (S.erase x).card = S.card - 1 := Finset.card_erase_of_mem hx
+  have hne₁ : (S.erase x).Nonempty := by
+    rw [Finset.nonempty_iff_ne_empty]
+    intro hEmpty
+    have hcard0 : (S.erase x).card = 0 := Finset.card_eq_zero.mpr hEmpty
+    omega
+  obtain ⟨z, hz⟩ := hne₁
+  have hz' : z ≠ x ∧ z ∈ S := Finset.mem_erase.mp hz
+  have hcard₂ : ((S.erase x).erase z).card = (S.erase x).card - 1 :=
+    Finset.card_erase_of_mem hz
+  have hne₂ : ((S.erase x).erase z).Nonempty := by
+    rw [Finset.nonempty_iff_ne_empty]
+    intro hEmpty
+    have hcard0 : ((S.erase x).erase z).card = 0 := Finset.card_eq_zero.mpr hEmpty
+    omega
+  obtain ⟨y, hy⟩ := hne₂
+  have hy' : y ≠ z ∧ y ∈ S.erase x := Finset.mem_erase.mp hy
+  have hy'' : y ≠ x ∧ y ∈ S := Finset.mem_erase.mp hy'.2
+  exact ⟨x, hx, z, hz'.2, y, hy''.2, hz'.1.symm, hy'.1.symm, hy''.1.symm⟩
+
+/-- The strict angle bound forces general position. -/
+lemma hgen_of_hangle_lt {n : ℕ} (hn : 3 ≤ n) {S : Finset ℂ}
+    (hangle : ∀ p ∈ S, ∀ q ∈ S, ∀ r ∈ S, p ≠ q → r ≠ q →
+      EuclideanGeometry.angle p q r < (1 - 1 / (n : ℝ)) * π) :
+    ∀ a ∈ S, ∀ b ∈ S, ∀ c ∈ S, a ≠ b → b ≠ c → a ≠ c →
+      ¬ Collinear ℝ ({a, b, c} : Set ℂ) := by
+  have hle : ∀ p ∈ S, ∀ q ∈ S, ∀ r ∈ S, p ≠ q → r ≠ q →
+      EuclideanGeometry.angle p q r ≤ (1 - 1 / (n : ℝ)) * π := fun p hp q hq r hr hpq hrq =>
+    le_of_lt (hangle p hp q hq r hr hpq hrq)
+  exact hgen_of_hangle hn hle
+
+/-- Three distinct collinear points of a set determine a straight angle. -/
+lemma exists_angle_eq_pi_of_collinear_finset {S : Finset ℂ} (hS : 3 ≤ S.card)
+    (hcol : Collinear ℝ (↑S : Set ℂ)) :
+    ∃ x ∈ S, ∃ z ∈ S, ∃ y ∈ S, x ≠ z ∧ y ≠ z ∧ x ≠ y ∧
+      EuclideanGeometry.angle x z y = π := by
+  obtain ⟨x, hx, z, hz, y, hy, hxz, hzy, hxy⟩ := exists_three_distinct_sc hS
+  have hsub : ({x, z, y} : Set ℂ) ⊆ ↑S := by
+    intro t ht
+    simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at ht
+    rcases ht with rfl | rfl | rfl
+    · exact hx
+    · exact hz
+    · exact hy
+  rcases exists_angle_eq_pi_of_collinear hxz hzy hxy (hcol.subset hsub) with h | h | h
+  · exact ⟨x, hx, z, hz, y, hy, hxz, Ne.symm hzy, hxy, h⟩
+  · exact ⟨z, hz, x, hx, y, hy, Ne.symm hxz, hxy.symm, hzy, h⟩
+  · exact ⟨x, hx, y, hy, z, hz, hxy, hzy, hxz, h⟩
+
+/-- It suffices to refute the extremal cardinality `2 ^ n - 1`. -/
+lemma scb_of_no_extremal {n : ℕ} (hn : 3 ≤ n)
+    (H : ∀ T : Finset ℂ, T.card = 2 ^ n - 1 →
+      (∀ p ∈ T, ∀ q ∈ T, ∀ r ∈ T, p ≠ q → r ≠ q →
+        EuclideanGeometry.angle p q r < (1 - 1 / (n : ℝ)) * π) → False) :
+    StrictCountingBound n := by
+  have h8 := two_pow_ge_eight' hn
+  intro S hangle
+  by_contra hcon
+  rw [Nat.not_le] at hcon
+  have hle : 2 ^ n - 1 ≤ S.card := by omega
+  obtain ⟨T, hTsub, hTcard⟩ := Finset.exists_subset_card_eq hle
+  refine H T hTcard fun p hp q hq r hr hpq hrq => ?_
+  exact hangle p (hTsub hp) q (hTsub hq) r (hTsub hr) hpq hrq
