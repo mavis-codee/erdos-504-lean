@@ -1005,3 +1005,350 @@ lemma exists_hull_windows {n : ℕ} (hn : 3 ≤ n) {S : Finset ℂ}
         (hwin i) hbform'
     rw [hpr]
     exact hbform'
+
+/-! ## Hull size -/
+
+/-- The real part of `conj (e^{iθ}) * (q - v)`, in polar terms. -/
+lemma re_conj_exp_mul_polar {v q : ℂ} {θ t r : ℝ}
+    (h : q - v = (r : ℂ) * Complex.exp (((θ + t : ℝ) : ℂ) * Complex.I)) :
+    ((starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I)) * (q - v)).re
+      = r * Real.cos t := by
+  have hkey : (starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I)) * (q - v)
+      = ((r : ℝ) : ℂ) * Complex.exp ((t : ℂ) * Complex.I) := by
+    rw [h, ← conj_exp_mul_exp θ t]
+    ring
+  rw [hkey, Complex.re_ofReal_mul, Complex.exp_ofReal_mul_I_re]
+
+/-- The colour of a direction given in polar form is the integer sector
+index modulo `n`. -/
+lemma dirIndex_polar_eq {n : ℕ} (hn : 0 < n) {r s : ℝ} (hr : 0 < r)
+    {z : ℂ} (hform : z = (r : ℂ) * Complex.exp ((s : ℂ) * Complex.I)) :
+    dirIndex n z = ((⌊(n : ℝ) * s / π⌋ : ℤ) % ((n : ℤ))).toNat := by
+  have hπ : (0 : ℝ) < π := Real.pi_pos
+  obtain ⟨m, hα⟩ : ∃ m : ℤ, s - 2 * π * m ∈ Set.Ioc (-π) π := by
+    have hfr : s - 2 * π * (⌊s / (2 * π)⌋ : ℝ) = 2 * π * Int.fract (s / (2 * π)) := by
+      have h1 := Int.floor_add_fract (s / (2 * π))
+      have hπpos : (0 : ℝ) < π := Real.pi_pos
+      have h2 : (2 * π) * ((⌊s / (2 * π)⌋ : ℝ) + Int.fract (s / (2 * π))) = s := by
+        rw [h1]
+        field_simp
+      have h3 : (2 * π) * (⌊s / (2 * π)⌋ : ℝ) + (2 * π) * Int.fract (s / (2 * π)) = s := by
+        rw [← mul_add]
+        exact h2
+      linarith
+    have h0 : 0 ≤ s - 2 * π * (⌊s / (2 * π)⌋ : ℝ) := by
+      rw [hfr]
+      have hf := Int.fract_nonneg (s / (2 * π))
+      nlinarith [hf, Real.pi_pos]
+    have hlt : s - 2 * π * (⌊s / (2 * π)⌋ : ℝ) < 2 * π := by
+      rw [hfr]
+      have hf := Int.fract_lt_one (s / (2 * π))
+      nlinarith [hf, Real.pi_pos]
+    by_cases hle : s - 2 * π * (⌊s / (2 * π)⌋ : ℝ) ≤ π
+    · exact ⟨⌊s / (2 * π)⌋, ⟨by linarith [h0, Real.pi_pos], hle⟩⟩
+    · have hgt : π < s - 2 * π * (⌊s / (2 * π)⌋ : ℝ) := lt_of_not_ge hle
+      refine ⟨⌊s / (2 * π)⌋ + 1, ⟨?_, ?_⟩⟩
+      · have heq : s - 2 * π * ((⌊s / (2 * π)⌋ : ℤ) + 1)
+          = (s - 2 * π * (⌊s / (2 * π)⌋ : ℝ)) - 2 * π := by
+          push_cast
+          ring
+        push_cast
+        rw [heq]
+        linarith [hgt, Real.pi_pos]
+      · have heq : s - 2 * π * ((⌊s / (2 * π)⌋ : ℤ) + 1)
+          = (s - 2 * π * (⌊s / (2 * π)⌋ : ℝ)) - 2 * π := by
+          push_cast
+          ring
+        push_cast
+        rw [heq]
+        linarith [hlt]
+  have hexp : Complex.exp ((s : ℂ) * Complex.I)
+      = Complex.exp (((s - 2 * π * m : ℝ) : ℂ) * Complex.I) := by
+    have h4 : ((s : ℝ) : ℂ) = ((s - 2 * π * m + 2 * π * m : ℝ) : ℂ) := by
+      push_cast
+      ring
+    rw [h4]
+    exact exp_add_int_two_pi (s - 2 * π * m) m
+  have hz : z = (r : ℂ) * Complex.exp (((s - 2 * π * m : ℝ) : ℂ) * Complex.I) := by
+    rw [hform, hexp]
+  have harg : Complex.arg z = s - 2 * π * m := by
+    rw [hz]
+    exact arg_of_polar hr hα.1 hα.2
+  unfold dirIndex
+  rw [harg]
+  have hfract : Int.fract ((s - 2 * π * m : ℝ) / π) = Int.fract (s / π) := by
+    rw [Int.fract_eq_fract]
+    refine ⟨-2 * m, ?_⟩
+    have hπ0 : (0 : ℝ) ≠ π := by
+      have := Real.pi_pos
+      linarith
+    field_simp
+    push_cast
+    ring
+  rw [hfract]
+  have hsplit : ⌊(n : ℝ) * s / π⌋ = (n : ℤ) * ⌊s / π⌋ + ⌊(n : ℝ) * Int.fract (s / π)⌋ := by
+    have h1 : (n : ℝ) * s / π = (n : ℝ) * (s / π) := by ring
+    have h2 : (n : ℝ) * (s / π) = (n : ℝ) * (⌊s / π⌋ + Int.fract (s / π)) := by
+      congr 1
+      exact (Int.floor_add_fract (s / π)).symm
+    have h3 : (n : ℝ) * (⌊s / π⌋ + Int.fract (s / π))
+        = (n : ℝ) * Int.fract (s / π) + ((n : ℤ) * ⌊s / π⌋ : ℤ) := by
+      push_cast
+      ring
+    rw [h1, h2, h3, Int.floor_add_intCast]
+    push_cast
+    ring
+  have hbn : 0 ≤ ⌊(n : ℝ) * Int.fract (s / π)⌋ ∧ ⌊(n : ℝ) * Int.fract (s / π)⌋ < (n : ℤ) := by
+    have hf0 := Int.fract_nonneg (s / π)
+    have hf1 := Int.fract_lt_one (s / π)
+    have hn' : (0 : ℝ) < n := by exact_mod_cast hn
+    refine ⟨Int.floor_nonneg.mpr ?_, Int.floor_lt.mpr ?_⟩
+    · nlinarith [hf0, hn']
+    · simpa using mul_lt_mul_of_pos_left hf1 hn'
+  rw [hsplit]
+  have hmod : (((n : ℤ) * ⌊s / π⌋ + ⌊(n : ℝ) * Int.fract (s / π)⌋ : ℤ) % (n : ℤ))
+      = ⌊(n : ℝ) * Int.fract (s / π)⌋ := by
+    rw [Int.add_comm, Int.add_mul_emod_self_left]
+    exact Int.emod_eq_of_lt hbn.1 hbn.2
+  rw [hmod]
+
+/-- Expanding `conj (e^{iA}) * Z` using the polar form of `Z`. -/
+lemma conj_exp_z_polar {Z : ℂ} {A : ℝ} :
+    (starRingEnd ℂ) (Complex.exp (((A : ℝ) : ℂ) * Complex.I)) * Z
+      = ((‖Z‖ : ℝ) : ℂ) * Complex.exp ((((Complex.arg Z - A : ℝ) : ℂ) * Complex.I)) := by
+  conv_lhs => rw [← Complex.norm_mul_exp_arg_mul_I Z]
+  have hreorder : (starRingEnd ℂ) (Complex.exp (((A : ℝ) : ℂ) * Complex.I))
+      * (((‖Z‖ : ℝ) : ℂ) * Complex.exp (((Complex.arg Z : ℝ) : ℂ) * Complex.I))
+    = ((‖Z‖ : ℝ) : ℂ) * ((starRingEnd ℂ) (Complex.exp (((A : ℝ) : ℂ) * Complex.I))
+      * Complex.exp (((Complex.arg Z : ℝ) : ℂ) * Complex.I)) := by
+    ring
+  have hconj : (starRingEnd ℂ) (Complex.exp (((A : ℝ) : ℂ) * Complex.I))
+      = Complex.exp (((-A : ℝ) : ℂ) * Complex.I) := by
+    rw [← Complex.exp_conj]
+    congr 1
+    rw [map_mul, Complex.conj_ofReal, Complex.conj_I]
+    push_cast
+    ring
+  have hex : Complex.exp (((-A : ℝ) : ℂ) * Complex.I)
+      * Complex.exp (((Complex.arg Z : ℝ) : ℂ) * Complex.I)
+      = Complex.exp ((((Complex.arg Z - A : ℝ) : ℂ) * Complex.I)) := by
+    rw [← Complex.exp_add]
+    congr 1
+    push_cast
+    ring
+  rw [hreorder, hconj, hex]
+
+/-- If `sin (φ - A) ≤ 0` and `cos (φ - A / 2) > 0` with `φ ≤ π` and `0 ≤ A`,
+then `φ ≤ A`. -/
+lemma le_of_sin_nonpos {φ A : ℝ} (hφπ : φ ≤ π) (hA0 : 0 ≤ A)
+    (hcos : 0 < Real.cos (φ - A / 2))
+    (hsin : Real.sin (φ - A) ≤ 0) : φ ≤ A := by
+  by_contra h
+  have hgt : A < φ := lt_of_not_ge h
+  have h1 : 0 < φ - A := by linarith
+  have h2 : φ - A ≤ π := by linarith
+  by_cases heq : φ - A = π
+  · have hφπ' : φ = π := by linarith [heq, hφπ, hA0]
+    have hA0' : A = 0 := by linarith [heq, hφπ', hA0]
+    have hsplit : φ - A / 2 = π := by rw [hφπ', hA0']; ring
+    rw [hsplit, Real.cos_pi] at hcos
+    linarith
+  · have hlt : φ - A < π := lt_of_le_of_ne h2 heq
+    have hsinpos : 0 < Real.sin (φ - A) := Real.sin_pos_of_pos_of_lt_pi h1 hlt
+    linarith [hsin]
+
+/-- The direction from a point `v ∈ S` to the centroid lies in the window at
+`v`, as a polar direction with parameter `t ∈ [0, A]`. -/
+lemma centroid_dir_in_window {S : Finset ℂ} {v : ℂ} (hv : v ∈ S)
+    (hcard : 1 < S.card)
+    {θ A : ℝ} (hA0 : 0 ≤ A) (hAπ : A < π)
+    (hwin : ∀ q ∈ S, q ≠ v → ∃ r t : ℝ, 0 < r ∧ 0 ≤ t ∧ t ≤ A ∧
+      q - v = (r : ℂ) * Complex.exp (((θ + t : ℝ) : ℂ) * Complex.I)) :
+    ∃ r t : ℝ, 0 < r ∧ 0 ≤ t ∧ t ≤ A ∧
+      szCentroid S - v = (r : ℂ) * Complex.exp (((θ + t : ℝ) : ℂ) * Complex.I) := by
+  classical
+  have hneW : (S.erase v).Nonempty := by
+    apply Finset.nonempty_iff_ne_empty.mpr
+    intro h0
+    have h1 : (S.erase v).card = 0 := Finset.card_eq_zero.mpr h0
+    have h2 := Finset.card_erase_of_mem hv
+    omega
+  have hchoice : ∀ p ∈ S.erase v, ∃ r t : ℝ, 0 < r ∧ 0 ≤ t ∧ t ≤ A ∧
+      p - v = (r : ℂ) * Complex.exp (((θ + t : ℝ) : ℂ) * Complex.I) := by
+    intro p hp
+    have h1 := Finset.mem_erase.mp hp
+    exact hwin p h1.2 h1.1
+  choose! r t hr ht0 htA hform using hchoice
+  have hcval : szCentroid S - v
+      = ∑ p ∈ S.erase v, ((1 / (S.card : ℝ) : ℝ) : ℂ) • (p - v) := by
+    have hc : (S.card : ℂ) ≠ 0 := by
+      have : S.card ≠ 0 := by omega
+      exact_mod_cast this
+    have hrhs : ∑ p ∈ S.erase v, ((1 / (S.card : ℝ) : ℝ) : ℂ) • (p - v)
+        = ((1 / (S.card : ℝ) : ℝ) : ℂ) • ∑ p ∈ S.erase v, (p - v) :=
+          (Finset.smul_sum).symm
+    have hsplit : ∑ p ∈ S.erase v, (p - v) = ∑ p ∈ S, (p - v) := by
+      refine Finset.sum_subset (Finset.erase_subset v S) ?_
+      intro x hx hnot
+      have hxe : x = v := by
+        by_contra hxc
+        exact hnot (Finset.mem_erase.mpr ⟨hxc, hx⟩)
+      rw [hxe, sub_self]
+    rw [szCentroid, hrhs, hsplit, Finset.sum_sub_distrib, Finset.sum_const, nsmul_eq_mul]
+    push_cast
+    simp only [smul_eq_mul]
+    field_simp
+  set Z : ℂ := (starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I))
+      * (szCentroid S - v) with hZ
+  have hZsum : Z = ∑ p ∈ S.erase v,
+      ((1 / (S.card : ℝ) : ℝ) : ℂ) * ((r p : ℂ) * Complex.exp ((t p : ℂ) * Complex.I)) := by
+    rw [hZ, hcval, Finset.mul_sum]
+    refine Finset.sum_congr rfl fun p hp => ?_
+    have hstep : (starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I))
+        * (((1 / (S.card : ℝ) : ℝ) : ℂ) * ((r p : ℂ)
+          * Complex.exp (((θ + t p : ℝ) : ℂ) * Complex.I)))
+      = ((1 / (S.card : ℝ) : ℝ) : ℂ)
+        * ((starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I))
+          * ((r p : ℂ) * Complex.exp (((θ + t p : ℝ) : ℂ) * Complex.I))) := by ring
+    have hkey : (starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I))
+        * ((r p : ℂ) * Complex.exp (((θ + t p : ℝ) : ℂ) * Complex.I))
+        = (r p : ℂ) * Complex.exp ((t p : ℂ) * Complex.I) := by
+      rw [← conj_exp_mul_exp θ (t p)]
+      ring
+    rw [smul_eq_mul, hform p hp, hstep, hkey]
+  have hwc : 0 < 1 / (S.card : ℝ) := by
+    have h2 : (0:ℝ) < S.card := by
+      have : 0 < S.card := by omega
+      exact_mod_cast this
+    exact div_pos one_pos h2
+  have hpos : ∀ p ∈ S.erase v, 0 < (1 / (S.card : ℝ)) * r p * Real.cos (t p - A / 2) := by
+    intro p hp
+    have htp : t p ≤ A := htA p hp
+    have ht0p : 0 ≤ t p := ht0 p hp
+    have hπ : (0:ℝ) < π := Real.pi_pos
+    have hcospos : 0 < Real.cos (A / 2) := Real.cos_pos_of_mem_Ioo ⟨by linarith, by linarith⟩
+    have hab : |t p - A / 2| ≤ A / 2 := by rw [abs_le]; exact ⟨by linarith, by linarith⟩
+    have hmono : Real.cos (A / 2) ≤ Real.cos (t p - A / 2) := by
+      have h1 : Real.cos (A / 2) ≤ Real.cos |t p - A / 2| :=
+        Real.cos_le_cos_of_nonneg_of_le_pi (abs_nonneg _) (by linarith [hAπ, hπ]) hab
+      rwa [Real.cos_abs] at h1
+    have hrp : 0 < r p := hr p hp
+    have h1 : 0 < (1 / (S.card : ℝ)) * r p := by nlinarith
+    have h2 : 0 < (1 / (S.card : ℝ)) * r p * Real.cos (A / 2) := by nlinarith [h1, hcospos]
+    nlinarith [h2, hmono]
+  have hhalf : 0 < ((starRingEnd ℂ)
+      (Complex.exp (((A / 2 : ℝ) : ℂ) * Complex.I)) * Z).re := by
+    have hmove : (starRingEnd ℂ) (Complex.exp (((A / 2 : ℝ) : ℂ) * Complex.I)) * Z
+        = ∑ p ∈ S.erase v, ((1 / (S.card : ℝ) : ℝ) : ℂ)
+            * ((starRingEnd ℂ) (Complex.exp (((A / 2 : ℝ) : ℂ) * Complex.I))
+              * ((r p : ℂ) * Complex.exp ((t p : ℂ) * Complex.I))) := by
+      rw [hZsum, Finset.mul_sum]
+      exact Finset.sum_congr rfl fun p hp => by ring
+    have hterm : ∀ p ∈ S.erase v,
+        0 < (((1 / (S.card : ℝ) : ℝ) : ℂ)
+          * ((starRingEnd ℂ) (Complex.exp (((A / 2 : ℝ) : ℂ) * Complex.I))
+            * ((r p : ℂ) * Complex.exp ((t p : ℂ) * Complex.I)))).re := by
+      intro p hp
+      have hex : ((A / 2 + (t p - A / 2 : ℝ) : ℝ) : ℂ) * Complex.I
+          = (t p : ℂ) * Complex.I := by
+        push_cast; ring
+      have hbr' : (r p : ℂ) * Complex.exp ((t p : ℂ) * Complex.I) - 0
+          = (r p : ℂ) * Complex.exp (((A / 2 + (t p - A / 2 : ℝ) : ℝ) * Complex.I)) := by
+        rw [sub_zero, hex]
+      have h2 := re_conj_exp_mul_polar (θ := A / 2) (t := t p - A / 2) (r := r p) hbr'
+      rw [sub_zero] at h2
+      rw [Complex.re_ofReal_mul, h2, ← mul_assoc]
+      exact hpos p hp
+    obtain ⟨p0, hp0⟩ := hneW
+    rw [hmove, Complex.re_sum]
+    exact Finset.sum_pos' (fun p hp => le_of_lt (hterm p hp)) ⟨p0, hp0, hterm p0 hp0⟩
+  have hZ0 : Z ≠ 0 := by
+    intro h0
+    rw [h0, mul_zero, Complex.zero_re] at hhalf
+    linarith
+  have hRpos : (0:ℝ) < ‖Z‖ := norm_pos_iff.mpr hZ0
+  have hWpolar : Z = ((‖Z‖ : ℝ) : ℂ) * Complex.exp (((Complex.arg Z : ℝ) : ℂ) * Complex.I) :=
+    (Complex.norm_mul_exp_arg_mul_I Z).symm
+  have him0 : 0 ≤ Z.im := by
+    rw [hZsum, Complex.im_sum]
+    refine Finset.sum_nonneg fun p hp => ?_
+    have h3 : ((r p : ℂ) * Complex.exp ((t p : ℂ) * Complex.I)).im = r p * Real.sin (t p) := by
+      rw [Complex.im_ofReal_mul, Complex.exp_ofReal_mul_I_im]
+    rw [Complex.im_ofReal_mul, h3]
+    refine mul_nonneg (le_of_lt hwc) (mul_nonneg (hr p hp).le ?_)
+    exact Real.sin_nonneg_of_nonneg_of_le_pi (ht0 p hp) (by linarith [htA p hp, hAπ])
+  have himA : ((starRingEnd ℂ) (Complex.exp (((A : ℝ) : ℂ) * Complex.I)) * Z).im ≤ 0 := by
+    rw [hZsum, Finset.mul_sum, Complex.im_sum]
+    refine Finset.sum_nonpos fun p hp => ?_
+    have hex : ((A + (t p - A : ℝ) : ℝ) : ℂ) * Complex.I
+        = (t p : ℂ) * Complex.I := by
+      push_cast; ring
+    have hbr' : (r p : ℂ) * Complex.exp ((t p : ℂ) * Complex.I) - 0
+        = (r p : ℂ) * Complex.exp (((A + (t p - A : ℝ) : ℝ) * Complex.I)) := by
+      rw [sub_zero, hex]
+    have h2 := im_conj_exp_mul_polar (θ := A) (t := t p - A) (r := r p) hbr'
+    rw [sub_zero] at h2
+    have hmove : (starRingEnd ℂ) (Complex.exp (((A : ℝ) : ℂ) * Complex.I))
+        * (((1 / (S.card : ℝ) : ℝ) : ℂ) * ((r p : ℂ) * Complex.exp ((t p : ℂ) * Complex.I)))
+      = ((1 / (S.card : ℝ) : ℝ) : ℂ)
+        * ((starRingEnd ℂ) (Complex.exp (((A : ℝ) : ℂ) * Complex.I))
+          * ((r p : ℂ) * Complex.exp ((t p : ℂ) * Complex.I))) := by ring
+    rw [hmove, Complex.im_ofReal_mul, h2]
+    have hs : Real.sin (t p - A) ≤ 0 := by
+      have h1 : 0 ≤ A - t p := by linarith [ht0 p hp, htA p hp]
+      have h2' : A - t p ≤ π := by linarith [ht0 p hp, htA p hp, hAπ]
+      have h3 : 0 ≤ Real.sin (A - t p) := Real.sin_nonneg_of_nonneg_of_le_pi h1 h2'
+      have h4 := Real.sin_neg (A - t p)
+      rw [neg_sub] at h4
+      linarith
+    exact mul_nonpos_of_nonneg_of_nonpos (le_of_lt hwc)
+      (mul_nonpos_of_nonneg_of_nonpos (hr p hp).le hs)
+  have hsinle : ‖Z‖ * Real.sin (Complex.arg Z - A) ≤ 0 := by
+    have hgoal : ((starRingEnd ℂ) (Complex.exp (((A : ℝ) : ℂ) * Complex.I)) * Z).im
+        = ‖Z‖ * Real.sin (Complex.arg Z - A) := by
+      rw [conj_exp_z_polar, Complex.im_ofReal_mul, Complex.exp_ofReal_mul_I_im]
+    rw [← hgoal]
+    exact himA
+  have harg0 : 0 ≤ Complex.arg Z := Complex.arg_nonneg_iff.mpr him0
+  have hargπ : Complex.arg Z ≤ π := Complex.arg_le_pi Z
+  have hcospos : 0 < Real.cos (Complex.arg Z - A / 2) := by
+    have hre : ((starRingEnd ℂ) (Complex.exp (((A / 2 : ℝ) : ℂ) * Complex.I)) * Z).re
+        = ‖Z‖ * Real.cos (Complex.arg Z - A / 2) := by
+      rw [conj_exp_z_polar, Complex.re_ofReal_mul, Complex.exp_ofReal_mul_I_re]
+    nlinarith [hre, hhalf, hRpos]
+  have hsin0 : Real.sin (Complex.arg Z - A) ≤ 0 := by
+    have h2 : ‖Z‖ * Real.sin (Complex.arg Z - A) ≤ ‖Z‖ * 0 := by
+      rw [mul_zero]; exact hsinle
+    exact le_of_mul_le_mul_left h2 hRpos
+  have hargA : Complex.arg Z ≤ A :=
+    le_of_sin_nonpos hargπ hA0 hcospos hsin0
+  refine ⟨‖Z‖, Complex.arg Z, hRpos, harg0, hargA, ?_⟩
+  have hcval' : szCentroid S - v = Complex.exp (((θ : ℂ) * Complex.I)) * Z := by
+    rw [hZ]
+    have hunit : Complex.exp (((θ : ℂ) * Complex.I))
+        * (starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I)) = 1 := by
+      have h1 : (starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I))
+          = Complex.exp (((-θ : ℝ) : ℂ) * Complex.I) := by
+        rw [← Complex.exp_conj]
+        congr 1
+        rw [map_mul, Complex.conj_ofReal, Complex.conj_I]
+        push_cast
+        ring
+      rw [h1, ← Complex.exp_add]
+      have h2 : ((θ : ℂ) * Complex.I + ((-θ : ℝ) : ℂ) * Complex.I) = 0 := by push_cast; ring
+      rw [h2, Complex.exp_zero]
+    rw [← mul_assoc, hunit, one_mul]
+  have hre : Complex.exp (((θ : ℂ) * Complex.I))
+      * (((‖Z‖ : ℝ) : ℂ) * Complex.exp (((Complex.arg Z : ℝ) : ℂ) * Complex.I))
+    = ((‖Z‖ : ℝ) : ℂ) * (Complex.exp (((θ : ℂ) * Complex.I))
+      * Complex.exp (((Complex.arg Z : ℝ) : ℂ) * Complex.I)) := by ring
+  have hexpadd : Complex.exp (((θ : ℂ) * Complex.I))
+      * Complex.exp (((Complex.arg Z : ℝ) : ℂ) * Complex.I)
+    = Complex.exp ((((θ + Complex.arg Z : ℝ) : ℂ) * Complex.I)) := by
+    rw [← Complex.exp_add]
+    congr 1
+    push_cast
+    ring
+  rw [hcval']
+  conv_lhs => rw [hWpolar]
+  rw [hre, hexpadd]
