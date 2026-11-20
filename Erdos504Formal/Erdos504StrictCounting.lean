@@ -1955,3 +1955,655 @@ theorem exists_isolated_hull_vertex {n : ℕ} (hn : 3 ≤ n)
       = (((Q + 1) % (n:ℤ)).toNat : ℤ) := by exact_mod_cast h3
   rw [h4, h5] at h6
   exact emod_ne_of_span_le hn hPQ hjP hjQ h6
+
+/-! ## Round 6: interior points and rotation isolation -/
+
+set_option maxHeartbeats 1000000 in
+/-- Collinearity of a triple is preserved under multiplication by a nonzero
+complex number. -/
+lemma collinear_const_mul {c a b d : ℂ} (hc : c ≠ 0)
+    (h : Collinear ℝ ({a, b, d} : Set ℂ)) :
+    Collinear ℝ ({c * a, c * b, c * d} : Set ℂ) := by
+  rw [collinear_iff_exists_forall_eq_smul_vadd] at h ⊢
+  obtain ⟨p₀, v, hv⟩ := h
+  refine ⟨c * p₀, c * v, ?_⟩
+  intro p hp
+  simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hp
+  rcases hp with h1 | hp
+  · obtain ⟨r, hr⟩ := hv a (by simp)
+    refine ⟨r, ?_⟩
+    rw [h1, hr]
+    simp only [vadd_eq_add, Complex.real_smul]
+    push_cast
+    ring
+  rcases hp with h2 | h3
+  · obtain ⟨r, hr⟩ := hv b (by simp)
+    refine ⟨r, ?_⟩
+    rw [h2, hr]
+    simp only [vadd_eq_add, Complex.real_smul]
+    push_cast
+    ring
+  · obtain ⟨r, hr⟩ := hv d (by simp)
+    refine ⟨r, ?_⟩
+    rw [h3, hr]
+    simp only [vadd_eq_add, Complex.real_smul]
+    push_cast
+    ring
+
+/-- Contrapositive of `collinear_const_mul`. -/
+lemma not_collinear_const_mul {c a b d : ℂ} (hc : c ≠ 0)
+    (h : ¬ Collinear ℝ ({a, b, d} : Set ℂ)) :
+    ¬ Collinear ℝ ({c * a, c * b, c * d} : Set ℂ) := by
+  intro hcol
+  have hinv : (c⁻¹ : ℂ) ≠ 0 := inv_ne_zero hc
+  have h2 := collinear_const_mul hinv hcol
+  rw [inv_mul_cancel_left₀ hc a, inv_mul_cancel_left₀ hc b,
+    inv_mul_cancel_left₀ hc d] at h2
+  exact h h2
+
+set_option maxHeartbeats 2000000 in
+/-- A point of `S` outside the extreme-point set, provided the hull is
+strictly smaller than `S`. -/
+lemma exists_not_extreme_of_card_lt {S : Finset ℂ}
+    (h : (extremeFinset S).card < S.card) :
+    ∃ q ∈ S, q ∉ extremeFinset S := by
+  by_contra hcon
+  have hsub : S ⊆ extremeFinset S := fun q hq => by
+    by_contra hne
+    exact hcon ⟨q, hq, hne⟩
+  exact (not_le.mpr h) (Finset.card_le_card hsub)
+
+set_option maxHeartbeats 1000000 in
+/-- Under the strict angle bound, a set of at least `2 ^ n - 1` points has a
+point that is not a vertex of the convex hull. -/
+lemma exists_interior_point {n : ℕ} (hn : 3 ≤ n)
+    {S : Finset ℂ} (hS3 : 3 ≤ S.card)
+    (hangle : ∀ p ∈ S, ∀ q ∈ S, ∀ r ∈ S, p ≠ q → r ≠ q →
+      EuclideanGeometry.angle p q r < (1 - 1 / (n : ℝ)) * π)
+    (hgen : ∀ a ∈ S, ∀ b ∈ S, ∀ c ∈ S, a ≠ b → b ≠ c → a ≠ c →
+      ¬ Collinear ℝ ({a, b, c} : Set ℂ))
+    (hcard : 2 ^ n - 1 ≤ S.card) :
+    ∃ q ∈ S, q ∉ extremeFinset S := by
+  classical
+  obtain ⟨w, hmem, hsur, hmono⟩ := exists_argSorted_enum hS3 hgen
+  have hm3 : 3 ≤ (extremeFinset S).card := three_le_card_extremeFinset hS3 hgen
+  obtain ⟨θ, A, hA0, hAπ, hAΘ, hwin, hsucc, hpred⟩ :=
+    exists_hull_windows hn hangle hgen w hmem hsur hmono hm3
+  have hcard2 : 2 < S.card := by
+    have h := two_pow_ge_eight' hn
+    have hc := hcard
+    omega
+  have ht : ∀ i, ∃ r t : ℝ, 0 < r ∧ 0 < t ∧ t < A i ∧
+      szCentroid S - w i = (r : ℂ) * Complex.exp (((θ i + t : ℝ) : ℂ) * Complex.I) :=
+    fun i => centroid_dir_in_window_strict (mem_of_mem_extremeFinset (hmem i))
+      hcard2 hgen (hA0 i) (hAπ i) (hwin i)
+  have hap : ∑ i : Fin (extremeFinset S).card, A i
+      = ((extremeFinset S).card : ℝ) * π - 2 * π :=
+    sum_window_apertures w hS3 hgen hmem hsur hmono hm3 hAπ hsucc hpred ht
+  have hmle : (extremeFinset S).card ≤ 2 * n - 1 := hull_card_le hn hAΘ hap hm3
+  have hlt : (extremeFinset S).card < S.card := by
+    have h3 := two_le_pow_sub n hn
+    have hc := hcard
+    omega
+  exact exists_not_extreme_of_card_lt hlt
+
+set_option maxHeartbeats 1000000 in
+/-- At a point `q` with at least two other points of `S`, some pair attains
+the maximum angle at `q`. -/
+lemma exists_max_angle_at {S : Finset ℂ} {q : ℂ} (hq : q ∈ S)
+    (hcard : 2 ≤ (S.erase q).card) :
+    ∃ q₁ ∈ S, ∃ q₂ ∈ S, q₁ ≠ q₂ ∧ q₁ ≠ q ∧ q₂ ≠ q ∧
+      ∀ z ∈ S, ∀ w ∈ S, z ≠ q → w ≠ q → z ≠ w →
+        EuclideanGeometry.angle z q w ≤ EuclideanGeometry.angle q₁ q q₂ := by
+  classical
+  set T := ((S.erase q).product (S.erase q)).filter (fun p => p.1 ≠ p.2) with hTdef
+  have hne : T.Nonempty := by
+    have hcard1 : 1 < (S.erase q).card := by omega
+    obtain ⟨a, ha, b, hb, hab⟩ := Finset.one_lt_card.mp hcard1
+    refine ⟨(a, b), ?_⟩
+    rw [hTdef]
+    exact Finset.mem_filter.mpr ⟨Finset.mem_product.mpr ⟨ha, hb⟩, hab⟩
+  obtain ⟨p, hpT, hmax⟩ :=
+    Finset.exists_max_image T (fun p => EuclideanGeometry.angle p.1 q p.2) hne
+  have hpmem : p.1 ∈ S.erase q ∧ p.2 ∈ S.erase q ∧ p.1 ≠ p.2 := by
+    have h := Finset.mem_filter.mp hpT
+    obtain ⟨ha, hb⟩ := Finset.mem_product.mp h.1
+    exact ⟨ha, hb, h.2⟩
+  have hp₁q : p.1 ≠ q := (Finset.mem_erase.mp hpmem.1).1
+  have hp₂q : p.2 ≠ q := (Finset.mem_erase.mp hpmem.2.1).1
+  have hp₁S : p.1 ∈ S := Finset.mem_of_mem_erase hpmem.1
+  have hp₂S : p.2 ∈ S := Finset.mem_of_mem_erase hpmem.2.1
+  have hne12 : p.1 ≠ p.2 := hpmem.2.2
+  refine ⟨p.1, hp₁S, p.2, hp₂S, hne12, hp₁q, hp₂q, ?_⟩
+  intro z hzS w hwS hzq hwq hzw
+  have hzE : z ∈ S.erase q := Finset.mem_erase.mpr ⟨hzq, hzS⟩
+  have hwE : w ∈ S.erase q := Finset.mem_erase.mpr ⟨hwq, hwS⟩
+  have hpair : (z, w) ∈ T := by
+    rw [hTdef]
+    refine Finset.mem_filter.mpr ⟨Finset.mem_product.mpr ⟨hzE, hwE⟩, hzw⟩
+  exact hmax (z, w) hpair
+
+set_option maxHeartbeats 1000000 in
+/-- The angle at `c` between two directions given in polar form, when the
+argument difference lies in `[-π, π]`.  The endpoint case `|β - α| = π`
+(antipodal rays) is included. -/
+lemma angle_polar_abs {a b c : ℂ} {r s α β : ℝ}
+    (hr : 0 < r) (hs : 0 < s)
+    (ha : a - c = (r : ℂ) * Complex.exp ((α : ℂ) * Complex.I))
+    (hb : b - c = (s : ℂ) * Complex.exp ((β : ℂ) * Complex.I))
+    (hlo : -π ≤ β - α) (hhi : β - α ≤ π) :
+    EuclideanGeometry.angle a c b = |β - α| := by
+  have hbridge : EuclideanGeometry.angle a c b
+      = InnerProductGeometry.angle (a - c) (b - c) := by
+    simp [EuclideanGeometry.angle, vsub_eq_sub]
+  have hac : a - c ≠ 0 := by
+    rw [ha]
+    exact mul_ne_zero (Complex.ofReal_ne_zero.mpr (ne_of_gt hr))
+      (Complex.exp_ne_zero _)
+  have habsh : |β - α| ≤ π := abs_le.mpr ⟨hlo, hhi⟩
+  rcases lt_or_eq_of_le habsh with hlt | heq
+  · obtain ⟨hlo', hhi'⟩ := abs_lt.mp hlt
+    rw [hbridge, ha, hb]
+    rw [angle_eq_abs_arg (mul_ne_zero (Complex.ofReal_ne_zero.mpr (ne_of_gt hr))
+        (Complex.exp_ne_zero _))
+      (mul_ne_zero (Complex.ofReal_ne_zero.mpr (ne_of_gt hs))
+        (Complex.exp_ne_zero _))]
+    have hexp : (starRingEnd ℂ) ((r : ℂ) * Complex.exp ((α : ℂ) * Complex.I))
+        * ((s : ℂ) * Complex.exp ((β : ℂ) * Complex.I))
+        = ((r * s : ℝ) : ℂ) * Complex.exp (((β - α : ℝ) : ℂ) * Complex.I) := by
+      have h1 : (starRingEnd ℂ) ((r : ℂ) * Complex.exp ((α : ℂ) * Complex.I))
+          = (r : ℂ) * (starRingEnd ℂ) (Complex.exp ((α : ℂ) * Complex.I)) := by
+        rw [map_mul, Complex.conj_ofReal]
+      have h2 : (starRingEnd ℂ) (Complex.exp ((α : ℂ) * Complex.I))
+          * Complex.exp ((β : ℂ) * Complex.I)
+          = Complex.exp (((β - α : ℝ) : ℂ) * Complex.I) := by
+        have hβeq : ((β : ℝ) : ℂ) * Complex.I
+            = ((α + (β - α) : ℝ) : ℂ) * Complex.I := by
+          push_cast
+          ring
+        rw [hβeq, conj_exp_mul_exp α (β - α)]
+      have hre : (r : ℂ) * (starRingEnd ℂ) (Complex.exp ((α : ℂ) * Complex.I))
+          * ((s : ℂ) * Complex.exp ((β : ℂ) * Complex.I))
+          = ((r * s : ℝ) : ℂ) * ((starRingEnd ℂ) (Complex.exp ((α : ℂ) * Complex.I))
+            * Complex.exp ((β : ℂ) * Complex.I)) := by
+        push_cast
+        ring
+      rw [h1, hre, h2]
+    rw [hexp]
+    rw [arg_of_polar (mul_pos hr hs) hlo' hhi'.le]
+  · -- `|β - α| = π`: the two rays are opposite.
+    rw [hbridge, heq, InnerProductGeometry.angle_eq_pi_iff]
+    refine ⟨hac, ⟨-(s / r), neg_lt_zero.mpr (div_pos hs hr), ?_⟩⟩
+    have hba : β - α = π ∨ β - α = -π := by
+      rcases le_or_gt 0 (β - α) with hp | hn
+      · refine Or.inl ?_
+        have h5 : |β - α| = (β - α) := abs_of_nonneg hp
+        linarith
+      · refine Or.inr ?_
+        have h5 : |β - α| = -(β - α) := abs_of_neg hn
+        linarith
+    have hexprel : Complex.exp ((β : ℂ) * Complex.I)
+        = -(Complex.exp ((α : ℂ) * Complex.I)) := by
+      rcases hba with h | h
+      · have hβ : β = α + π := by linarith
+        rw [hβ]
+        have hsplit : ((α + π : ℝ) : ℂ) * Complex.I
+            = (α : ℂ) * Complex.I + ((π : ℝ) : ℂ) * Complex.I := by
+          push_cast
+          ring
+        rw [hsplit, Complex.exp_add, Complex.exp_pi_mul_I]
+        ring
+      · have hβ : β = α - π := by linarith
+        rw [hβ]
+        have hsplit : ((α - π : ℝ) : ℂ) * Complex.I
+            = (α : ℂ) * Complex.I + ((-π : ℝ) : ℂ) * Complex.I := by
+          push_cast
+          ring
+        have hexpneg : Complex.exp (((-π : ℝ) : ℂ) * Complex.I) = -1 := by
+          have hpi : Complex.exp ((π : ℂ) * Complex.I) = -1 := Complex.exp_pi_mul_I
+          have h1 : (starRingEnd ℂ) (Complex.exp ((π : ℂ) * Complex.I))
+              = Complex.exp (((-π : ℝ) : ℂ) * Complex.I) := by
+            rw [← Complex.exp_conj]
+            congr 1
+            rw [map_mul, Complex.conj_ofReal, Complex.conj_I]
+            push_cast
+            ring
+          rw [← h1, hpi]
+          simp
+        rw [hsplit, Complex.exp_add, hexpneg]
+        ring
+    rw [ha, hb, hexprel]
+    rw [Complex.real_smul]
+    rw [← mul_assoc, ← Complex.ofReal_mul]
+    have hcoef : (-(s / r) * r : ℝ) = -s := by
+      rw [neg_mul, div_eq_mul_inv, mul_assoc, inv_mul_cancel₀ (ne_of_gt hr), mul_one]
+    rw [hcoef, Complex.ofReal_neg]
+    ring
+
+set_option maxHeartbeats 1000000 in
+/-- If `conj u * w` has argument `A` (any real number), then `w` has argument
+`arg u + A`. -/
+lemma polar_of_arg_conj_mul {u w : ℂ} {A : ℝ} (hu0 : u ≠ 0)
+    (harg : Complex.arg ((starRingEnd ℂ) u * w) = A) :
+    w = (‖w‖ : ℂ) * Complex.exp (((Complex.arg u + A : ℝ) : ℂ) * Complex.I) := by
+  have hu : u = (‖u‖ : ℂ) * Complex.exp ((Complex.arg u : ℂ) * Complex.I) :=
+    (Complex.norm_mul_exp_arg_mul_I u).symm
+  have hconj : (starRingEnd ℂ) u
+      = (‖u‖ : ℂ) * Complex.exp (((-Complex.arg u : ℝ) : ℂ) * Complex.I) := by
+    conv_lhs => rw [hu]
+    rw [map_mul, Complex.conj_ofReal, ← Complex.exp_conj]
+    congr 2
+    rw [map_mul, Complex.conj_ofReal, Complex.conj_I]
+    push_cast
+    ring
+  have hprod : (starRingEnd ℂ) u * w
+      = ((‖u‖ * ‖w‖ : ℝ) : ℂ) * Complex.exp ((A : ℂ) * Complex.I) := by
+    have h1 := Complex.norm_mul_exp_arg_mul_I ((starRingEnd ℂ) u * w)
+    rw [harg] at h1
+    rw [Complex.norm_mul, Complex.norm_conj] at h1
+    exact h1.symm
+  have hu0' : (‖u‖ : ℂ) ≠ 0 :=
+    Complex.ofReal_ne_zero.mpr (ne_of_gt (norm_pos_iff.mpr hu0))
+  have hstep : Complex.exp (((-Complex.arg u : ℝ) : ℂ) * Complex.I) * w
+      = (‖w‖ : ℂ) * Complex.exp ((A : ℂ) * Complex.I) := by
+    rw [hconj] at hprod
+    have h2 : (‖u‖ : ℂ) * (Complex.exp (((-Complex.arg u : ℝ) : ℂ) * Complex.I) * w)
+        = (‖u‖ : ℂ) * ((‖w‖ : ℂ) * Complex.exp ((A : ℂ) * Complex.I)) := by
+      have h3 : (‖u‖ : ℂ) * (Complex.exp (((-Complex.arg u : ℝ) : ℂ) * Complex.I) * w)
+          = ((‖u‖ : ℂ) * Complex.exp (((-Complex.arg u : ℝ) : ℂ) * Complex.I)) * w :=
+        (mul_assoc _ _ _).symm
+      have h4 : (‖u‖ : ℂ) * ((‖w‖ : ℂ) * Complex.exp ((A : ℂ) * Complex.I))
+          = ((‖u‖ : ℂ) * (‖w‖ : ℂ)) * Complex.exp ((A : ℂ) * Complex.I) :=
+        (mul_assoc _ _ _).symm
+      have h5 : ((‖u‖ : ℂ) * (‖w‖ : ℂ)) = ((‖u‖ * ‖w‖ : ℝ) : ℂ) := by
+        rw [← Complex.ofReal_mul]
+      rw [h3, h4, h5]
+      exact hprod
+    exact mul_left_cancel₀ hu0' h2
+  have hone : Complex.exp ((Complex.arg u : ℂ) * Complex.I)
+      * Complex.exp (((-Complex.arg u : ℝ) : ℂ) * Complex.I) = 1 := by
+    rw [← Complex.exp_add]
+    have hz : (Complex.arg u : ℂ) * Complex.I
+        + ((-Complex.arg u : ℝ) : ℂ) * Complex.I = 0 := by
+      push_cast
+      ring
+    rw [hz, Complex.exp_zero]
+  calc w = (1 : ℂ) * w := (one_mul w).symm
+    _ = (Complex.exp ((Complex.arg u : ℂ) * Complex.I)
+          * Complex.exp (((-Complex.arg u : ℝ) : ℂ) * Complex.I)) * w := by
+        rw [hone]
+    _ = Complex.exp ((Complex.arg u : ℂ) * Complex.I)
+          * (Complex.exp (((-Complex.arg u : ℝ) : ℂ) * Complex.I) * w) := by
+        rw [mul_assoc]
+    _ = Complex.exp ((Complex.arg u : ℂ) * Complex.I)
+          * ((‖w‖ : ℂ) * Complex.exp ((A : ℂ) * Complex.I)) := by rw [hstep]
+    _ = (‖w‖ : ℂ) * Complex.exp (((Complex.arg u + A : ℝ) : ℂ) * Complex.I) := by
+        rw [mul_left_comm]
+        congr 1
+        rw [← Complex.exp_add]
+        congr 1
+        push_cast
+        ring
+
+set_option maxHeartbeats 1000000 in
+/-- **Core interior isolation.**  If two reference points are seen from `q`
+at directions `−δ/2` and `−(δ/2+A)`, and `z` makes an angle at most `A`
+with both, where `A + δ = π(1−1/n)` and `δ > 0`, then `z` is not in
+colour `0` as seen from `q`. -/
+lemma dirIndex_ne_zero_of_max_arc {n : ℕ} {q p₁ p₂ z : ℂ} {A δ r₁ r₂ s : ℝ}
+    (hn : 3 ≤ n)
+    (hA0 : 0 ≤ A) (hAπ : A < π)
+    (hδ0 : 0 < δ)
+    (hΘ : A + δ = (1 - 1 / (n : ℝ)) * π)
+    (hr₁ : 0 < r₁) (hr₂ : 0 < r₂) (hs : 0 < s)
+    (hp₁ : p₁ - q = (r₁ : ℂ) * Complex.exp ((-(δ / 2) : ℝ) * Complex.I))
+    (hp₂ : p₂ - q = (r₂ : ℂ) * Complex.exp ((-(δ / 2 + A) : ℝ) * Complex.I))
+    (hform : z - q = (s : ℂ) * Complex.exp ((Complex.arg (z - q) : ℂ) * Complex.I))
+    (h₁ : EuclideanGeometry.angle p₁ q z ≤ A)
+    (h₂ : EuclideanGeometry.angle p₂ q z ≤ A) :
+    dirIndex n (z - q) ≠ 0 := by
+  classical
+  intro hdir0
+  set γ := Complex.arg (z - q) with hγdef
+  have hγο1 : -π < γ := Complex.neg_pi_lt_arg _
+  have hγο2 : γ ≤ π := Complex.arg_le_pi _
+  have hπ : (0 : ℝ) < π := Real.pi_pos
+  have hnR : (0 : ℝ) < n := by
+    have : (0 : ℕ) < n := by omega
+    exact_mod_cast this
+  have h1n : (1 : ℝ) ≤ n := by
+    have : (1 : ℕ) ≤ n := by omega
+    exact_mod_cast this
+  have hΘπ : (1 - 1 / (n : ℝ)) * π < π := theta_lt_pi hn
+  have hAΘ : A < (1 - 1 / (n : ℝ)) * π := by rw [← hΘ]; linarith
+  have hΘeq : (1 - 1 / (n : ℝ)) * π = π - π / n := by ring
+  have hΘ' : A + δ = π - π / n := by rw [hΘ, hΘeq]
+  have hπn : 0 < π / n := div_pos hπ hnR
+  have hπn1 : π / n ≤ π := div_le_self (by linarith) h1n
+  have hδπ : δ < π := by linarith
+  have hδsum : δ / 2 + δ / 2 = δ := by ring
+  have hδhalf_pos : 0 < δ / 2 := by linarith
+  have hδhalf_lt : δ / 2 < π := by linarith
+  have hAΘ'' : A < π - π / n := by linarith
+  have hhalf : δ / 2 + A < π := by linarith
+  have hkey : π / n ≤ 2 * π - δ / 2 - 2 * A := by linarith
+  unfold dirIndex at hdir0
+  rw [← hγdef] at hdir0
+  have hf0 : 0 ≤ (n : ℝ) * Int.fract (γ / π) := by
+    apply mul_nonneg (le_of_lt hnR)
+    exact Int.fract_nonneg _
+  have hfl0 : 0 ≤ ⌊(n : ℝ) * Int.fract (γ / π)⌋ := Int.floor_nonneg.mpr hf0
+  have hflz : ⌊(n : ℝ) * Int.fract (γ / π)⌋ = 0 := by
+    have h2 : (⌊(n : ℝ) * Int.fract (γ / π)⌋ : ℤ) ≤ 0 :=
+      Int.toNat_eq_zero.mp hdir0
+    exact le_antisymm h2 hfl0
+  have hlt1 : (n : ℝ) * Int.fract (γ / π) < 1 := by
+    have h := Int.lt_floor_add_one ((n : ℝ) * Int.fract (γ / π))
+    rw [hflz] at h
+    linarith
+  have hfr : Int.fract (γ / π) < 1 / n := by
+    rw [lt_div_iff₀ hnR]
+    have h3 : Int.fract (γ / π) * n = (n : ℝ) * Int.fract (γ / π) := by ring
+    rw [h3]
+    exact hlt1
+  rcases le_or_gt 0 γ with hpos | hneg
+  · -- `γ ≥ 0`
+    rcases lt_or_eq_of_le hγο2 with hltπ | heqπ
+    · -- Case 2: `0 ≤ γ < π`, hence `γ < π/n`.  Use `p₂`, possibly with wrap.
+      have hγlt : γ < π / n := by
+        have hfrpos : Int.fract (γ / π) = γ / π :=
+          Int.fract_eq_self.mpr ⟨div_nonneg hpos hπ.le,
+            by rw [div_lt_one hπ]; linarith⟩
+        rw [hfrpos] at hfr
+        have h4 : γ / π * π < (1 / n) * π := mul_lt_mul_of_pos_right hfr hπ
+        have h5 : γ / π * π = γ := div_mul_cancel₀ γ (ne_of_gt hπ)
+        have h6 : (1 / n) * π = π / n := by ring
+        rw [h5, h6] at h4
+        exact h4
+      by_cases hwrap : γ + δ / 2 + A ≤ π
+      · have hang : EuclideanGeometry.angle p₂ q z
+            = |γ - (-(δ / 2 + A))| :=
+          angle_polar_abs hr₂ hs hp₂ hform (by linarith) (by linarith)
+        have hform2 : γ - (-(δ / 2 + A)) = γ + δ / 2 + A := by ring
+        rw [hform2] at hang
+        rw [abs_of_nonneg (by linarith)] at hang
+        linarith
+      · have hwgt : π < γ + δ / 2 + A := not_le.mp hwrap
+        have hsum2π : γ + δ / 2 + A < 2 * π := by linarith
+        have hrew : z - q
+            = (s : ℂ) * Complex.exp (((γ - 2 * π : ℝ) : ℂ) * Complex.I) := by
+          rw [hform]
+          have h := exp_add_int_two_pi (γ - 2 * π) 1
+          have h2 : (γ - 2 * π + 2 * π * ((1 : ℤ) : ℝ) : ℝ) = γ := by
+            push_cast
+            ring
+          rw [h2] at h
+          rw [h]
+        have hang : EuclideanGeometry.angle p₂ q z
+            = |γ - 2 * π - (-(δ / 2 + A))| :=
+          angle_polar_abs hr₂ hs hp₂ hrew (by linarith) (by linarith)
+        have hform2 : γ - 2 * π - (-(δ / 2 + A)) = γ - 2 * π + δ / 2 + A := by
+          ring
+        rw [hform2] at hang
+        have habs : |γ - 2 * π + δ / 2 + A| = -(γ - 2 * π + δ / 2 + A) :=
+          abs_of_neg (by linarith)
+        rw [habs] at hang
+        linarith
+    · -- Case 3: `γ = π`.  Use `p₁` with the representation `e^{-iπ}`.
+      have hrew : z - q = (s : ℂ) * Complex.exp (((-π : ℝ) : ℂ) * Complex.I) := by
+        rw [hform, heqπ]
+        have h := exp_add_int_two_pi (-(π : ℝ)) 1
+        have h2 : (-(π : ℝ) + 2 * π * ((1 : ℤ) : ℝ) : ℝ) = π := by
+          push_cast
+          ring
+        rw [h2] at h
+        rw [h]
+      have hang : EuclideanGeometry.angle p₁ q z
+          = |(-π : ℝ) - (-(δ / 2))| :=
+        angle_polar_abs hr₁ hs hp₁ hrew (by linarith) (by linarith)
+      have hform2 : (-π : ℝ) - (-(δ / 2)) = (-π : ℝ) + δ / 2 := by ring
+      rw [hform2] at hang
+      have habs : |(-π : ℝ) + δ / 2| = -((-π : ℝ) + δ / 2) := abs_of_neg (by linarith)
+      rw [habs] at hang
+      linarith
+  · -- Case 1: `γ < 0`, hence `γ < -Θ`.  Use `p₁`.
+    have hflneg : Int.fract (γ / π) = γ / π + 1 := by
+      have hfloor : ⌊γ / π⌋ = (-1 : ℤ) := by
+        have hlo : ((-1 : ℤ) : ℝ) ≤ γ / π := by
+          rw [le_div_iff₀ hπ]
+          push_cast
+          linarith
+        have hhi : γ / π < 0 := by
+          rw [div_lt_iff₀ hπ]
+          linarith
+        have hzero : ((-1 : ℤ) : ℝ) + 1 = 0 := by push_cast; ring
+        exact Int.floor_eq_iff.mpr ⟨hlo, by linarith [hhi, hzero]⟩
+      have h := Int.floor_add_fract (γ / π)
+      rw [hfloor] at h
+      linarith
+    have hγlt : γ < -(π - π / n) := by
+      rw [hflneg] at hfr
+      have h2 : γ / π < 1 / n - 1 := by linarith
+      have h3 : γ / π * π < (1 / n - 1) * π := mul_lt_mul_of_pos_right h2 hπ
+      have h5 : γ / π * π = γ := div_mul_cancel₀ γ (ne_of_gt hπ)
+      have h4 : (1 / n - 1) * π = -(π - π / n) := by ring
+      rw [h5, h4] at h3
+      exact h3
+    have hang : EuclideanGeometry.angle p₁ q z = |γ - (-(δ / 2))| :=
+      angle_polar_abs hr₁ hs hp₁ hform (by linarith) (by linarith)
+    have hform2 : γ - (-(δ / 2)) = γ + δ / 2 := by ring
+    rw [hform2] at hang
+    have habs : |γ + δ / 2| = -(γ + δ / 2) := abs_of_neg (by linarith)
+    rw [habs] at hang
+    linarith
+
+set_option maxHeartbeats 1000000 in
+/-- **Interior isolation by rotation.**  Under the strict angle bound, after
+a suitable rotation of the whole configuration some point of the rotated set
+is isolated in colour `0`. -/
+theorem exists_isolated_interior {n : ℕ} (hn : 3 ≤ n)
+    {S : Finset ℂ} (hS3 : 3 ≤ S.card)
+    (hangle : ∀ p ∈ S, ∀ q ∈ S, ∀ r ∈ S, p ≠ q → r ≠ q →
+      EuclideanGeometry.angle p q r < (1 - 1 / (n : ℝ)) * π)
+    (hgen : ∀ a ∈ S, ∀ b ∈ S, ∀ c ∈ S, a ≠ b → b ≠ c → a ≠ c →
+      ¬ Collinear ℝ ({a, b, c} : Set ℂ))
+    (hcard : 2 ^ n - 1 ≤ S.card) :
+    ∃ c : ℂ, c ≠ 0 ∧ ∃ q' ∈ S.image (fun z => c * z),
+      ∀ p ∈ S.image (fun z => c * z), p ≠ q' → dirIndex n (p - q') ≠ 0 := by
+  classical
+  obtain ⟨q, hq, -⟩ := exists_interior_point hn hS3 hangle hgen hcard
+  have hcardE : 2 ≤ (S.erase q).card := by
+    have h := two_pow_ge_eight' hn
+    have h1 := Finset.card_erase_of_mem hq
+    have hc := hcard
+    omega
+  obtain ⟨q₁, hq₁S, q₂, hq₂S, hq₁q₂, hq₁q, hq₂q, hmax⟩ :=
+    exists_max_angle_at hq hcardE
+  have hΘπ : (1 - 1 / (n : ℝ)) * π < π := theta_lt_pi hn
+  have hu0 : q₁ - q ≠ 0 := sub_ne_zero.mpr hq₁q
+  have hw0 : q₂ - q ≠ 0 := sub_ne_zero.mpr hq₂q
+  have hbr : EuclideanGeometry.angle q₁ q q₂
+      = InnerProductGeometry.angle (q₁ - q) (q₂ - q) := by
+    simp [EuclideanGeometry.angle, vsub_eq_sub]
+  have habsarg : |Complex.arg ((starRingEnd ℂ) (q₁ - q) * (q₂ - q))|
+      = EuclideanGeometry.angle q₁ q q₂ := by
+    rw [hbr]
+    exact (angle_eq_abs_arg hu0 hw0).symm
+  set A := EuclideanGeometry.angle q₁ q q₂ with hAdef
+  have hA0 : 0 ≤ A := by rw [hAdef]; exact EuclideanGeometry.angle_nonneg _ _ _
+  have hAΘ : A < (1 - 1 / (n : ℝ)) * π := hangle q₁ hq₁S q hq q₂ hq₂S hq₁q hq₂q
+  set δ := (1 - 1 / (n : ℝ)) * π - A with hδdef
+  have hδ0 : 0 < δ := by rw [hδdef]; linarith
+  have hAπ : A < π := by linarith
+  have hΘ : A + δ = (1 - 1 / (n : ℝ)) * π := by rw [hδdef]; ring
+  have hmax₁ : ∀ z ∈ S, z ≠ q → EuclideanGeometry.angle q₁ q z ≤ A := by
+    intro z hz hzq
+    by_cases hz₁ : z = q₁
+    · rw [hz₁]
+      have h0 : EuclideanGeometry.angle q₁ q q₁ = 0 := by
+        have hbr0 : EuclideanGeometry.angle q₁ q q₁
+            = InnerProductGeometry.angle (q₁ - q) (q₁ - q) := by
+          simp [EuclideanGeometry.angle, vsub_eq_sub]
+        rw [hbr0]
+        exact InnerProductGeometry.angle_self (sub_ne_zero.mpr hq₁q)
+      rw [h0]
+      exact hA0
+    · have h1 := hmax z hz q₁ hq₁S hzq hq₁q hz₁
+      rwa [EuclideanGeometry.angle_comm z q q₁] at h1
+  have hmax₂ : ∀ z ∈ S, z ≠ q → EuclideanGeometry.angle q₂ q z ≤ A := by
+    intro z hz hzq
+    by_cases hz₂ : z = q₂
+    · rw [hz₂]
+      have h0 : EuclideanGeometry.angle q₂ q q₂ = 0 := by
+        have hbr0 : EuclideanGeometry.angle q₂ q q₂
+            = InnerProductGeometry.angle (q₂ - q) (q₂ - q) := by
+          simp [EuclideanGeometry.angle, vsub_eq_sub]
+        rw [hbr0]
+        exact InnerProductGeometry.angle_self (sub_ne_zero.mpr hq₂q)
+      rw [h0]
+      exact hA0
+    · have h1 := hmax z hz q₂ hq₂S hzq hq₂q hz₂
+      rwa [EuclideanGeometry.angle_comm z q q₂] at h1
+  have hu : q₁ - q
+      = (‖q₁ - q‖ : ℂ) * Complex.exp ((Complex.arg (q₁ - q) : ℂ) * Complex.I) :=
+    (Complex.norm_mul_exp_arg_mul_I _).symm
+  set β := Complex.arg (q₁ - q) with hβdef
+  rcases le_or_gt 0 (Complex.arg ((starRingEnd ℂ) (q₁ - q) * (q₂ - q))) with hge | hlt
+  · -- `q₂` is CCW from `q₁` by `A`: rotate so that `q₂` lands at `−δ/2`.
+    have harg : Complex.arg ((starRingEnd ℂ) (q₁ - q) * (q₂ - q)) = A :=
+      (abs_of_nonneg hge).symm.trans habsarg
+    have hw := polar_of_arg_conj_mul hu0 harg
+    rw [← hβdef] at hw
+    set η := Complex.exp ((-((β + A) + δ / 2) : ℝ) * Complex.I) with hηdef
+    have hη0 : η ≠ 0 := Complex.exp_ne_zero _
+    have hηn : ‖η‖ = 1 := by
+      rw [hηdef]
+      exact Complex.norm_exp_ofReal_mul_I _
+    have hnormη : ∀ x : ℂ, ‖η * x‖ = ‖x‖ := by
+      intro x
+      rw [norm_mul, hηn, one_mul]
+    refine ⟨η, hη0, η * q, Finset.mem_image.mpr ⟨q, hq, rfl⟩, ?_⟩
+    intro p hp pnej
+    obtain ⟨z, hzS, rfl⟩ := Finset.mem_image.mp hp
+    have hzq : z ≠ q := fun h => pnej (by rw [h])
+    have hnorm₁ : (0 : ℝ) < ‖η * q₁ - η * q‖ := by
+      have hnz : η * q₁ - η * q ≠ 0 := by
+        rw [← mul_sub]
+        exact mul_ne_zero hη0 (sub_ne_zero.mpr hq₁q)
+      exact norm_pos_iff.mpr hnz
+    have hnorm₂ : (0 : ℝ) < ‖η * q₂ - η * q‖ := by
+      have hnz : η * q₂ - η * q ≠ 0 := by
+        rw [← mul_sub]
+        exact mul_ne_zero hη0 (sub_ne_zero.mpr hq₂q)
+      exact norm_pos_iff.mpr hnz
+    have hnormz : (0 : ℝ) < ‖η * z - η * q‖ := by
+      have hnz : η * z - η * q ≠ 0 := by
+        rw [← mul_sub]
+        exact mul_ne_zero hη0 (sub_ne_zero.mpr hzq)
+      exact norm_pos_iff.mpr hnz
+    have hexp1 : η * Complex.exp ((β : ℂ) * Complex.I)
+        = Complex.exp ((-(δ / 2 + A) : ℝ) * Complex.I) := by
+      rw [hηdef, ← Complex.exp_add]
+      congr 1
+      push_cast
+      ring
+    have hexp2 : η * Complex.exp (((β + A : ℝ) : ℂ) * Complex.I)
+        = Complex.exp ((-(δ / 2) : ℝ) * Complex.I) := by
+      rw [hηdef, ← Complex.exp_add]
+      congr 1
+      push_cast
+      ring
+    have hη₁ : η * q₁ - η * q
+        = (‖η * q₁ - η * q‖ : ℂ) * Complex.exp ((-(δ / 2 + A) : ℝ) * Complex.I) := by
+      rw [show η * q₁ - η * q = η * (q₁ - q) from by rw [mul_sub], hnormη]
+      nth_rewrite 1 [hu]
+      rw [mul_left_comm, ← hexp1]
+    have hη₂ : η * q₂ - η * q
+        = (‖η * q₂ - η * q‖ : ℂ) * Complex.exp ((-(δ / 2) : ℝ) * Complex.I) := by
+      rw [show η * q₂ - η * q = η * (q₂ - q) from by rw [mul_sub], hnormη]
+      nth_rewrite 1 [hw]
+      rw [mul_left_comm, ← hexp2]
+    have hform' : η * z - η * q
+        = (‖η * z - η * q‖ : ℂ)
+          * Complex.exp ((Complex.arg (η * z - η * q) : ℂ) * Complex.I) :=
+      (Complex.norm_mul_exp_arg_mul_I _).symm
+    have ha₁ : EuclideanGeometry.angle (η * q₂) (η * q) (η * z) ≤ A := by
+      rw [euclidean_angle_const_mul hη0]
+      exact hmax₂ z hzS hzq
+    have ha₂ : EuclideanGeometry.angle (η * q₁) (η * q) (η * z) ≤ A := by
+      rw [euclidean_angle_const_mul hη0]
+      exact hmax₁ z hzS hzq
+    exact dirIndex_ne_zero_of_max_arc hn hA0 hAπ hδ0 hΘ
+      hnorm₂ hnorm₁ hnormz hη₂ hη₁ hform' ha₁ ha₂
+  · -- `q₂` is CW from `q₁` by `A`: rotate so that `q₁` lands at `−δ/2`.
+    have hargneg : -Complex.arg ((starRingEnd ℂ) (q₁ - q) * (q₂ - q)) = A := by
+      have habs : |Complex.arg ((starRingEnd ℂ) (q₁ - q) * (q₂ - q))|
+          = -Complex.arg ((starRingEnd ℂ) (q₁ - q) * (q₂ - q)) := abs_of_neg hlt
+      rw [habsarg] at habs
+      linarith
+    have harg : Complex.arg ((starRingEnd ℂ) (q₁ - q) * (q₂ - q)) = -A := by
+      rw [← hargneg]
+      ring
+    have hw := polar_of_arg_conj_mul hu0 harg
+    rw [← hβdef] at hw
+    set η := Complex.exp ((-(β + δ / 2) : ℝ) * Complex.I) with hηdef
+    have hη0 : η ≠ 0 := Complex.exp_ne_zero _
+    have hηn : ‖η‖ = 1 := by
+      rw [hηdef]
+      exact Complex.norm_exp_ofReal_mul_I _
+    have hnormη : ∀ x : ℂ, ‖η * x‖ = ‖x‖ := by
+      intro x
+      rw [norm_mul, hηn, one_mul]
+    refine ⟨η, hη0, η * q, Finset.mem_image.mpr ⟨q, hq, rfl⟩, ?_⟩
+    intro p hp pnej
+    obtain ⟨z, hzS, rfl⟩ := Finset.mem_image.mp hp
+    have hzq : z ≠ q := fun h => pnej (by rw [h])
+    have hnorm₁ : (0 : ℝ) < ‖η * q₁ - η * q‖ := by
+      have hnz : η * q₁ - η * q ≠ 0 := by
+        rw [← mul_sub]
+        exact mul_ne_zero hη0 (sub_ne_zero.mpr hq₁q)
+      exact norm_pos_iff.mpr hnz
+    have hnorm₂ : (0 : ℝ) < ‖η * q₂ - η * q‖ := by
+      have hnz : η * q₂ - η * q ≠ 0 := by
+        rw [← mul_sub]
+        exact mul_ne_zero hη0 (sub_ne_zero.mpr hq₂q)
+      exact norm_pos_iff.mpr hnz
+    have hnormz : (0 : ℝ) < ‖η * z - η * q‖ := by
+      have hnz : η * z - η * q ≠ 0 := by
+        rw [← mul_sub]
+        exact mul_ne_zero hη0 (sub_ne_zero.mpr hzq)
+      exact norm_pos_iff.mpr hnz
+    have hexp1 : η * Complex.exp ((β : ℂ) * Complex.I)
+        = Complex.exp ((-(δ / 2) : ℝ) * Complex.I) := by
+      rw [hηdef, ← Complex.exp_add]
+      congr 1
+      push_cast
+      ring
+    have hexp2 : η * Complex.exp (((β + -A : ℝ) : ℂ) * Complex.I)
+        = Complex.exp ((-(δ / 2 + A) : ℝ) * Complex.I) := by
+      rw [hηdef, ← Complex.exp_add]
+      congr 1
+      push_cast
+      ring
+    have hη₁ : η * q₁ - η * q
+        = (‖η * q₁ - η * q‖ : ℂ) * Complex.exp ((-(δ / 2) : ℝ) * Complex.I) := by
+      rw [show η * q₁ - η * q = η * (q₁ - q) from by rw [mul_sub], hnormη]
+      nth_rewrite 1 [hu]
+      rw [mul_left_comm, ← hexp1]
+    have hη₂ : η * q₂ - η * q
+        = (‖η * q₂ - η * q‖ : ℂ) * Complex.exp ((-(δ / 2 + A) : ℝ) * Complex.I) := by
+      rw [show η * q₂ - η * q = η * (q₂ - q) from by rw [mul_sub], hnormη]
+      nth_rewrite 1 [hw]
+      rw [mul_left_comm, ← hexp2]
+    have hform' : η * z - η * q
+        = (‖η * z - η * q‖ : ℂ)
+          * Complex.exp ((Complex.arg (η * z - η * q) : ℂ) * Complex.I) :=
+      (Complex.norm_mul_exp_arg_mul_I _).symm
+    have ha₁ : EuclideanGeometry.angle (η * q₁) (η * q) (η * z) ≤ A := by
+      rw [euclidean_angle_const_mul hη0]
+      exact hmax₁ z hzS hzq
+    have ha₂ : EuclideanGeometry.angle (η * q₂) (η * q) (η * z) ≤ A := by
+      rw [euclidean_angle_const_mul hη0]
+      exact hmax₂ z hzS hzq
+    exact dirIndex_ne_zero_of_max_arc hn hA0 hAπ hδ0 hΘ
+      hnorm₁ hnorm₂ hnormz hη₁ hη₂ hform' ha₁ ha₂
