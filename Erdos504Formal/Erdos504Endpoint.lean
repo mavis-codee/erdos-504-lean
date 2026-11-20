@@ -18,37 +18,32 @@ This file treats the endpoint `α_{2^n - 1}`.
 * `minimaxAngle_card_sub_one_le` — the supremum half of the endpoint,
   `α_{2^n - 1} ≤ π (1 - 1/n)`.
 * `erdos_504_endpoint_exists_of_card_le` — the guaranteed-angle half of the
-  endpoint, conditional on the strict counting bound.
-* `erdos_504_endpoint_of_card_le` — the endpoint itself, **conditional on one
-  combinatorial lemma** (`StrictCountingBound`) that is stated precisely below
-  and is *not* proved here.
+  endpoint.
+* `erdos_504_endpoint_of_card_le` — the endpoint itself, unconditional.
 
-## The remaining ingredient
+## The counting ingredient
 
-The single missing step is the *strict* sector-counting bound
+The sharp sector-counting bound
 
     (all angles of `S` are < π (1 - 1/n))  ⟹  S.card ≤ 2^n - 2,
 
-the sharp counterpart of `Erdos504.card_le_two_pow_of_angle_le`, which only
-gives `S.card ≤ 2 ^ n` for the non-strict hypothesis `≤ π (1 - 1/n)`.  The
-endpoint needs the strict bound, because `2^n` points already force an angle
-*strictly* larger than `π (1 - 1/n)` (Erdős–Szekeres 1960, Theorem 1), so the
-counting argument has to lose one further point once the hypothesis is
-strict.  Upstream (`ToshiDad/erdos-504`) lists the endpoint as future work;
-its `2^n`-argument (rigidity ⇒ regular `n`-gon ⇒ interior point sees a wide
-angle) is built around `hcard : S.card = 2 ^ n` and does not carry over to
-`2^n - 1` points.
+the sharp counterpart of `Erdos504.card_le_two_pow_of_angle_le` (which only
+gives `S.card ≤ 2 ^ n` for the non-strict hypothesis `≤ π (1 - 1/n)`), is
+proved in `Erdos504Formal/Erdos504StrictCounting.lean` as
+`Erdos504.strictCountingBound`, following Erdős–Szekeres (1960), Theorem 3:
+an interior point isolated in colour `0` after a rotation, a hull vertex
+isolated in some colour, and the defect form of Lemma 4
+(`emptyCount_sum_le`) with `k = 1`.
 
-`erdos_504_endpoint_of_card_le` isolates exactly that gap: the endpoint
-follows formally from the strict counting bound, so nothing but that lemma is
-missing.  Everything else — the supremum bookkeeping, the `ε`-sharpness, the
-deletion of a point from Szekeres' construction — is proved here.
+Everything else — the supremum bookkeeping, the `ε`-sharpness, the deletion
+of a point from Szekeres' construction — is proved here.
 
 Reference: P. Erdős and G. Szekeres, *On some extremum problems in elementary
 geometry*, Ann. Univ. Sci. Budapest. Eötvös Sect. Math. 3-4 (1960/61), 53–62.
 -/
 import Erdos504Formal.Erdos504
 import Erdos504Formal.Erdos504Minimax
+import Erdos504Formal.Erdos504StrictCounting
 
 namespace Erdos504
 
@@ -183,37 +178,19 @@ theorem minimaxAngle_card_sub_one_le {n : ℕ} (hn : 3 ≤ n) :
     hang x hx z hz y hy hxz hyz
   linarith
 
-/-! ## The endpoint, conditional on the strict counting bound -/
+/-! ## The endpoint -/
 
 /--
-**The missing ingredient, stated precisely.**  The *strict* sector-counting
-bound: if every angle determined by `S` is *strictly* smaller than
-`π (1 - 1/n)`, then `S` has at most `2^n - 2` points.
-
-This is the sharp counterpart of `Erdos504.card_le_two_pow_of_angle_le`
-(which yields only `S.card ≤ 2 ^ n` for the non-strict hypothesis
-`≤ π (1 - 1/n)`).  It is the mathematical content of the endpoint
-`α_{2^n - 1} = π (1 - 1/n)` of Erdős–Szekeres (1960); it is *not* proved in
-this repository.
--/
-def StrictCountingBound (n : ℕ) : Prop :=
-  ∀ S : Finset ℂ,
-    (∀ p ∈ S, ∀ q ∈ S, ∀ r ∈ S, p ≠ q → r ≠ q →
-      EuclideanGeometry.angle p q r < (1 - 1 / (n : ℝ)) * π) →
-    S.card ≤ 2 ^ n - 2
-
-/--
-**The guaranteed-angle half of the endpoint, conditional on
-`StrictCountingBound`.**  Every set of `2^n - 1` points of the plane contains
-three pairwise distinct points determining an angle of at least
-`π (1 - 1/n)`.
+**The guaranteed-angle half of the endpoint.**  Every set of `2^n - 1` points
+of the plane contains three pairwise distinct points determining an angle of
+at least `π (1 - 1/n)`.
 
 Indeed, a `2^n - 1`-point set cannot have all of its angles *strictly* below
-`π (1 - 1/n)`, since the strict counting bound would force
-`S.card ≤ 2^n - 2`.
+`π (1 - 1/n)`, since the strict counting bound `strictCountingBound`
+(`Erdos504Formal/Erdos504StrictCounting.lean`) would force `S.card ≤ 2^n - 2`.
 -/
 theorem erdos_504_endpoint_exists_of_card_le {n : ℕ} (hn : 3 ≤ n)
-    (hsharp : StrictCountingBound n) (S : Finset ℂ) (hcard : S.card = 2 ^ n - 1) :
+    (S : Finset ℂ) (hcard : S.card = 2 ^ n - 1) :
     ∃ x ∈ S, ∃ z ∈ S, ∃ y ∈ S, x ≠ z ∧ y ≠ z ∧ x ≠ y ∧
       (1 - 1 / (n : ℝ)) * π ≤ EuclideanGeometry.angle x z y := by
   have hc_pos := pi_mul_one_sub_inv_pos' hn
@@ -228,7 +205,7 @@ theorem erdos_504_endpoint_exists_of_card_le {n : ℕ} (hn : 3 ≤ n)
       have hge : (1 - 1 / (n : ℝ)) * π ≤ EuclideanGeometry.angle x z y :=
         le_of_not_gt hlt
       exact hcon ⟨x, hx, z, hz, y, hy, hxz, hyz, hge⟩
-    exact absurd (hsharp S hnot) (by omega)
+    exact absurd (strictCountingBound hn S hnot) (by omega)
   obtain ⟨x, hx, z, hz, y, hy, hxz, hyz, hge⟩ := hex
   have hxy : x ≠ y := by
     by_contra h
@@ -239,18 +216,17 @@ theorem erdos_504_endpoint_exists_of_card_le {n : ℕ} (hn : 3 ≤ n)
   exact ⟨x, hx, z, hz, y, hy, hxz, hyz, hxy, hge⟩
 
 /--
-**The endpoint, conditional on `StrictCountingBound`.**  If the strict
-sector-counting bound holds for `n`, then
+**The endpoint.**  For `n ≥ 3`,
 
-    α_{2^n - 1} = π (1 - 1/n)      (n ≥ 3).
+    α_{2^n - 1} = π (1 - 1/n).
 
 The proof uses only the two halves that are established elsewhere:
 
 * the supremum half, from `minimaxAngle_card_sub_one_le`;
-* the guaranteed-angle half, from `erdos_504_endpoint_exists_of_card_le`.
+* the guaranteed-angle half, from `erdos_504_endpoint_exists_of_card_le`
+  (which rests on `strictCountingBound`).
 -/
-theorem erdos_504_endpoint_of_card_le {n : ℕ} (hn : 3 ≤ n)
-    (hsharp : StrictCountingBound n) :
+theorem erdos_504_endpoint_of_card_le {n : ℕ} (hn : 3 ≤ n) :
     minimaxAngle (2 ^ n - 1) = (1 - 1 / (n : ℝ)) * π := by
   classical
   have hc_pos := pi_mul_one_sub_inv_pos' hn
@@ -263,7 +239,7 @@ theorem erdos_504_endpoint_of_card_le {n : ℕ} (hn : 3 ≤ n)
     refine ⟨⟨hc_pos.le, hc_le_pi⟩, ?_⟩
     intro S hScard
     obtain ⟨x, hx, z, hz, y, hy, hxz, hyz, hxy, hge⟩ :=
-      erdos_504_endpoint_exists_of_card_le hn hsharp S hScard
+      erdos_504_endpoint_exists_of_card_le hn S hScard
     exact ⟨x, hx, z, hz, y, hy, hxz, hyz, hxy, hge⟩
   apply le_antisymm
   · exact minimaxAngle_card_sub_one_le hn
@@ -283,6 +259,7 @@ foundations `propext`, `Classical.choice` and `Quot.sound`; in particular no
 
 #print axioms exists_config_angle_lt_card_sub_one
 #print axioms minimaxAngle_card_sub_one_le
+#print axioms strictCountingBound
 #print axioms erdos_504_endpoint_exists_of_card_le
 #print axioms erdos_504_endpoint_of_card_le
 #print axioms erdos_504
