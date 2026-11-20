@@ -2408,10 +2408,10 @@ theorem exists_isolated_interior {n : ℕ} (hn : 3 ≤ n)
     (hgen : ∀ a ∈ S, ∀ b ∈ S, ∀ c ∈ S, a ≠ b → b ≠ c → a ≠ c →
       ¬ Collinear ℝ ({a, b, c} : Set ℂ))
     (hcard : 2 ^ n - 1 ≤ S.card) :
-    ∃ c : ℂ, c ≠ 0 ∧ ∃ q' ∈ S.image (fun z => c * z),
-      ∀ p ∈ S.image (fun z => c * z), p ≠ q' → dirIndex n (p - q') ≠ 0 := by
+    ∃ c : ℂ, c ≠ 0 ∧ ∃ q ∈ S, q ∉ extremeFinset S ∧
+      ∀ p ∈ S.image (fun z => c * z), p ≠ c * q → dirIndex n (p - c * q) ≠ 0 := by
   classical
-  obtain ⟨q, hq, -⟩ := exists_interior_point hn hS3 hangle hgen hcard
+  obtain ⟨q, hq, hqne⟩ := exists_interior_point hn hS3 hangle hgen hcard
   have hcardE : 2 ≤ (S.erase q).card := by
     have h := two_pow_ge_eight' hn
     have h1 := Finset.card_erase_of_mem hq
@@ -2482,7 +2482,7 @@ theorem exists_isolated_interior {n : ℕ} (hn : 3 ≤ n)
     have hnormη : ∀ x : ℂ, ‖η * x‖ = ‖x‖ := by
       intro x
       rw [norm_mul, hηn, one_mul]
-    refine ⟨η, hη0, η * q, Finset.mem_image.mpr ⟨q, hq, rfl⟩, ?_⟩
+    refine ⟨η, hη0, q, hq, hqne, ?_⟩
     intro p hp pnej
     obtain ⟨z, hzS, rfl⟩ := Finset.mem_image.mp hp
     have hzq : z ≠ q := fun h => pnej (by rw [h])
@@ -2554,7 +2554,7 @@ theorem exists_isolated_interior {n : ℕ} (hn : 3 ≤ n)
     have hnormη : ∀ x : ℂ, ‖η * x‖ = ‖x‖ := by
       intro x
       rw [norm_mul, hηn, one_mul]
-    refine ⟨η, hη0, η * q, Finset.mem_image.mpr ⟨q, hq, rfl⟩, ?_⟩
+    refine ⟨η, hη0, q, hq, hqne, ?_⟩
     intro p hp pnej
     obtain ⟨z, hzS, rfl⟩ := Finset.mem_image.mp hp
     have hzq : z ≠ q := fun h => pnej (by rw [h])
@@ -2607,3 +2607,242 @@ theorem exists_isolated_interior {n : ℕ} (hn : 3 ≤ n)
       exact hmax₂ z hzS hzq
     exact dirIndex_ne_zero_of_max_arc hn hA0 hAπ hδ0 hΘ
       hnorm₁ hnorm₂ hnormz hη₁ hη₂ hform' ha₁ ha₂
+set_option maxHeartbeats 1000000 in
+/-- Multiplication by a nonzero complex number, as an invertible real-linear
+map of the plane. -/
+noncomputable def mulCLinearEquiv (c : ℂ) (hc : c ≠ 0) : ℂ ≃ₗ[ℝ] ℂ where
+  toFun z := c * z
+  invFun z := c⁻¹ * z
+  map_add' x y := by ring
+  map_smul' r x := by
+    simp only [Complex.real_smul, RingHom.id_apply]
+    ring
+  left_inv z := inv_mul_cancel_left₀ hc z
+  right_inv z := by
+    show c * (c⁻¹ * z) = z
+    rw [← mul_assoc, mul_inv_cancel₀ hc, one_mul]
+
+set_option maxHeartbeats 1000000 in
+/-- Non-extremality is preserved under multiplication by a nonzero complex
+number. -/
+lemma notMem_extremeFinset_const_mul {S : Finset ℂ} {q : ℂ}
+    (hq : q ∉ extremeFinset S) {c : ℂ} (hc : c ≠ 0) :
+    c * q ∉ extremeFinset (S.image (fun z => c * z)) := by
+  intro hcon
+  apply hq
+  rw [mem_extremeFinset] at hcon ⊢
+  have hcoe : (↑(S.image fun z => c * z) : Set ℂ)
+      = ⇑(mulCLinearEquiv c hc) '' (↑S : Set ℂ) := by
+    rw [Finset.coe_image]
+    exact Set.image_congr (fun z _ => rfl)
+  have he : ⇑(mulCLinearEquiv c hc).toLinearMap = ⇑(mulCLinearEquiv c hc) := rfl
+  have hconv : convexHull ℝ (⇑(mulCLinearEquiv c hc) '' (↑S : Set ℂ))
+      = ⇑(mulCLinearEquiv c hc) '' convexHull ℝ (↑S : Set ℂ) := by
+    rw [← he, LinearMap.image_convexHull (mulCLinearEquiv c hc).toLinearMap]
+  rw [hcoe, hconv, ← image_extremePoints (mulCLinearEquiv c hc)] at hcon
+  obtain ⟨x, hx, heq⟩ :=
+    (Set.mem_image ⇑(mulCLinearEquiv c hc) _ (c * q)).mp hcon
+  have hxx : ⇑(mulCLinearEquiv c hc) x = c * x := rfl
+  have hxeq : x = q := mul_left_cancel₀ hc (hxx.trans heq)
+  rw [← hxeq]
+  exact hx
+
+set_option maxHeartbeats 2000000 in
+/-- **Strict counting bound** (Erdős–Szekeres 1960, Theorem 3).  If every
+angle determined by a finite point set is strictly less than `π (1 - 1/n)`
+with `n ≥ 3`, then the set has at most `2 ^ n - 2` points. -/
+theorem strictCountingBound {n : ℕ} (hn : 3 ≤ n) : StrictCountingBound n := by
+  classical
+  refine scb_of_no_extremal hn ?_
+  intro T hTcard hTangle
+  have hgen := hgen_of_hangle_lt hn hTangle
+  have hS3 : 3 ≤ T.card := by
+    have h := two_pow_ge_eight' hn
+    omega
+  obtain ⟨η, hη0, q, hqS, hqne, hiso0⟩ :=
+    exists_isolated_interior hn hS3 hTangle hgen (le_of_eq hTcard.symm)
+  set S' : Finset ℂ := T.image (fun z => η * z) with hS'def
+  have hinj : Function.Injective (fun z : ℂ => η * z) :=
+    fun x y hxy => mul_left_cancel₀ hη0 hxy
+  have hcard' : S'.card = T.card := Finset.card_image_of_injective T hinj
+  have hS3' : 3 ≤ S'.card := by omega
+  have himgmem : ∀ x ∈ S', ∃ x₀ ∈ T, η * x₀ = x := by
+    intro x hx
+    rw [hS'def] at hx
+    exact Finset.mem_image.mp hx
+  have hangle' : ∀ p ∈ S', ∀ q ∈ S', ∀ r ∈ S', p ≠ q → r ≠ q →
+      EuclideanGeometry.angle p q r < (1 - 1 / (n : ℝ)) * π := by
+    intro p hp q hq r hr hpq hrq
+    obtain ⟨p₀, hp₀, hp_eq⟩ := himgmem p hp
+    obtain ⟨q₀, hq₀, hq_eq⟩ := himgmem q hq
+    obtain ⟨r₀, hr₀, hr_eq⟩ := himgmem r hr
+    have hpq0 : p₀ ≠ q₀ := fun h => hpq (by rw [← hp_eq, ← hq_eq, h])
+    have hrq0 : r₀ ≠ q₀ := fun h => hrq (by rw [← hr_eq, ← hq_eq, h])
+    have h2 : EuclideanGeometry.angle p q r = EuclideanGeometry.angle p₀ q₀ r₀ := by
+      rw [← hp_eq, ← hq_eq, ← hr_eq, euclidean_angle_const_mul hη0]
+    rw [h2]
+    exact hTangle p₀ hp₀ q₀ hq₀ r₀ hr₀ hpq0 hrq0
+  have hgen' : ∀ a ∈ S', ∀ b ∈ S', ∀ c ∈ S', a ≠ b → b ≠ c → a ≠ c →
+      ¬ Collinear ℝ ({a, b, c} : Set ℂ) := by
+    intro a ha b hb c hc hab hbc hac hcol
+    obtain ⟨a₀, ha₀, rfl⟩ := himgmem a ha
+    obtain ⟨b₀, hb₀, rfl⟩ := himgmem b hb
+    obtain ⟨c₀, hc₀, rfl⟩ := himgmem c hc
+    have hab0 : a₀ ≠ b₀ := fun h => hab (by rw [h])
+    have hbc0 : b₀ ≠ c₀ := fun h => hbc (by rw [h])
+    have hac0 : a₀ ≠ c₀ := fun h => hac (by rw [h])
+    have h2 := collinear_const_mul (inv_ne_zero hη0) hcol
+    rw [inv_mul_cancel_left₀ hη0 a₀, inv_mul_cancel_left₀ hη0 b₀,
+      inv_mul_cancel_left₀ hη0 c₀] at h2
+    exact hgen a₀ ha₀ b₀ hb₀ c₀ hc₀ hab0 hbc0 hac0 h2
+  set q' : ℂ := η * q with hq'def
+  have hq'S' : q' ∈ S' := Finset.mem_image.mpr ⟨q, hqS, rfl⟩
+  have hqne' : q' ∉ extremeFinset S' := notMem_extremeFinset_const_mul hqne hη0
+  obtain ⟨w, hmem, hsur, hmono⟩ := exists_argSorted_enum hS3' hgen'
+  have hm3' : 3 ≤ (extremeFinset S').card := three_le_card_extremeFinset hS3' hgen'
+  obtain ⟨i, k, hisoH⟩ :=
+    exists_isolated_hull_vertex hn hS3' hangle' hgen' w hmem hsur hmono hm3'
+  have hwiE : w i ∈ extremeFinset S' := hmem i
+  have hwiS' : w i ∈ S' := mem_of_mem_extremeFinset hwiE
+  have hpne : q' ≠ w i := by
+    intro h
+    apply hqne'
+    rw [h]
+    exact hwiE
+  have hn0 : (0 : ℕ) < n := by omega
+  set V : Type := {x // x ∈ S'} with hVdef
+  haveI : Fintype V := Finset.Subtype.fintype S'
+  haveI : DecidableEq V := fun a b => Classical.propDecidable (a = b)
+  set p₁ : V := ⟨q', hq'S'⟩ with hp₁def
+  set p₂ : V := ⟨w i, hwiS'⟩ with hp₂def
+  have hpneV : p₁ ≠ p₂ := fun h => hpne (congrArg Subtype.val h)
+  -- If `u → v` is positively oriented, then `v` has no positive outgoing
+  -- edge in the sector of `u → v` (strict angle version).
+  have key : ∀ u v : V, (u : ℂ) ≠ (v : ℂ) →
+      IsPos ((v : ℂ) - (u : ℂ)) →
+      ¬ ∃ z : V, (z : ℂ) ≠ (v : ℂ) ∧ IsPos ((z : ℂ) - (v : ℂ)) ∧
+        dirIndex n ((z : ℂ) - (v : ℂ)) = dirIndex n ((v : ℂ) - (u : ℂ)) := by
+    rintro u v huv hpos ⟨z, hzv, hzpos, hzcol⟩
+    have hpq : (v : ℂ) - (u : ℂ) ≠ 0 := sub_ne_zero.mpr huv.symm
+    have hqr : (z : ℂ) - (v : ℂ) ≠ 0 := sub_ne_zero.mpr hzv
+    have hbig := lt_angle_of_isPos_of_dirIndex_eq hn0 hpq hqr hpos hzpos hzcol.symm
+    have hle := hangle' (u : ℂ) u.2 (v : ℂ) v.2 (z : ℂ) z.2 huv hzv
+    linarith
+  set color : V → V → Fin n :=
+    fun u v => ⟨dirIndex n ((v : ℂ) - (u : ℂ)), dirIndex_lt hn0 _⟩ with hcolordef
+  have color_val : ∀ u v : V, (color u v : ℕ) = dirIndex n ((v : ℂ) - (u : ℂ)) :=
+    fun u v => rfl
+  set side : Fin n → V → Bool :=
+    fun i v => decide (∃ z : V, (z : ℂ) ≠ (v : ℂ) ∧ IsPos ((z : ℂ) - (v : ℂ)) ∧
+      dirIndex n ((z : ℂ) - (v : ℂ)) = (i : ℕ)) with hsidedef
+  have hside : ∀ u v : V, u ≠ v → side (color u v) u ≠ side (color u v) v := by
+    intro u v huv
+    have huv' : (u : ℂ) ≠ (v : ℂ) := fun h => huv (Subtype.ext h)
+    have hz : (v : ℂ) - (u : ℂ) ≠ 0 := sub_ne_zero.mpr huv'.symm
+    have hdi : dirIndex n ((u : ℂ) - (v : ℂ)) = dirIndex n ((v : ℂ) - (u : ℂ)) := by
+      rw [show ((u : ℂ) - (v : ℂ)) = -((v : ℂ) - (u : ℂ)) by ring, dirIndex_neg]
+    by_cases hpos : IsPos ((v : ℂ) - (u : ℂ))
+    · have e1 : side (color u v) u = true := by
+        show decide (∃ z : V, (z : ℂ) ≠ (u : ℂ) ∧ IsPos ((z : ℂ) - (u : ℂ)) ∧
+            dirIndex n ((z : ℂ) - (u : ℂ)) = (color u v : ℕ)) = true
+        refine decide_eq_true ⟨v, huv'.symm, hpos, ?_⟩
+        rw [color_val]
+      have e2 : side (color u v) v = false := by
+        show decide (∃ z : V, (z : ℂ) ≠ (v : ℂ) ∧ IsPos ((z : ℂ) - (v : ℂ)) ∧
+            dirIndex n ((z : ℂ) - (v : ℂ)) = (color u v : ℕ)) = false
+        refine decide_eq_false ?_
+        rintro ⟨z, hzv, hzpos, hzcol⟩
+        rw [color_val] at hzcol
+        exact key u v huv' hpos ⟨z, hzv, hzpos, hzcol⟩
+      rw [e1, e2]
+      simp
+    · have hpos' : IsPos ((u : ℂ) - (v : ℂ)) := by
+        rw [show ((u : ℂ) - (v : ℂ)) = -((v : ℂ) - (u : ℂ)) by ring]
+        exact (isPos_neg_iff hz).mpr hpos
+      have e1 : side (color u v) u = false := by
+        show decide (∃ z : V, (z : ℂ) ≠ (u : ℂ) ∧ IsPos ((z : ℂ) - (u : ℂ)) ∧
+            dirIndex n ((z : ℂ) - (u : ℂ)) = (color u v : ℕ)) = false
+        refine decide_eq_false ?_
+        rintro ⟨z, hzu, hzpos, hzcol⟩
+        rw [color_val] at hzcol
+        exact key v u huv'.symm hpos' ⟨z, hzu, hzpos, hzcol.trans hdi.symm⟩
+      have e2 : side (color u v) v = true := by
+        show decide (∃ z : V, (z : ℂ) ≠ (v : ℂ) ∧ IsPos ((z : ℂ) - (v : ℂ)) ∧
+            dirIndex n ((z : ℂ) - (v : ℂ)) = (color u v : ℕ)) = true
+        refine decide_eq_true ⟨u, huv', hpos', ?_⟩
+        rw [color_val]
+        exact hdi
+      rw [e1, e2]
+      simp
+  have hsymm : ∀ u v : V, color u v = color v u := by
+    intro u v
+    apply Fin.val_injective
+    show dirIndex n ((v : ℂ) - (u : ℂ)) = dirIndex n ((u : ℂ) - (v : ℂ))
+    rw [show ((u : ℂ) - (v : ℂ)) = -((v : ℂ) - (u : ℂ)) by ring, dirIndex_neg]
+  have hN : (Finset.univ : Finset V).card + 1 = 2 ^ n := by
+    have hcv : (Finset.univ : Finset V).card = S'.card := Fintype.card_coe S'
+    omega
+  have hsum := emptyCount_sum_le n V 1 Finset.univ color side
+    (fun u _ v _ huv => hside u v huv) hsymm hN
+  -- Each isolated point contributes at least `1` to the sum.
+  have he1 : (1 : ℕ) ≤ emptyCountIn color Finset.univ p₁ := by
+    have hm : (⟨0, hn0⟩ : Fin n) ∈ emptyFilter color Finset.univ p₁ := by
+      rw [mem_emptyFilter]
+      intro u _ hune hzero
+      have hd : dirIndex n ((u : ℂ) - q') ≠ 0 :=
+        hiso0 (u : ℂ) u.2 (fun h => hune (Subtype.ext h))
+      apply hd
+      have hv : (color p₁ u : ℕ) = 0 := congrArg Fin.val hzero
+      rw [color_val p₁ u] at hv
+      exact hv
+    have hcz : (emptyFilter color Finset.univ p₁).card ≠ 0 := by
+      intro h0
+      rw [Finset.card_eq_zero] at h0
+      rw [h0] at hm
+      exact Finset.notMem_empty _ hm
+    unfold emptyCountIn
+    omega
+  have he2 : (1 : ℕ) ≤ emptyCountIn color Finset.univ p₂ := by
+    have hm : k ∈ emptyFilter color Finset.univ p₂ := by
+      rw [mem_emptyFilter]
+      intro u _ hune hzero
+      have hd : dirIndex n ((u : ℂ) - w i) ≠ (k : ℕ) :=
+        hisoH (u : ℂ) u.2 (fun h => hune (Subtype.ext h))
+      apply hd
+      have hv : (color p₂ u : ℕ) = (k : ℕ) := congrArg Fin.val hzero
+      rw [color_val p₂ u] at hv
+      exact hv
+    have hcz : (emptyFilter color Finset.univ p₂).card ≠ 0 := by
+      intro h0
+      rw [Finset.card_eq_zero] at h0
+      rw [h0] at hm
+      exact Finset.notMem_empty _ hm
+    unfold emptyCountIn
+    omega
+  have hlow : (2 : ℕ) ≤ ∑ p ∈ Finset.univ,
+      (2 ^ emptyCountIn color Finset.univ p - 1) := by
+    have h2le : (2 : ℕ) ≤ (2 ^ emptyCountIn color Finset.univ p₁ - 1)
+        + (2 ^ emptyCountIn color Finset.univ p₂ - 1) := by
+      have hp1 : (2 : ℕ) ≤ 2 ^ emptyCountIn color Finset.univ p₁ := by
+        have h1 := he1
+        calc (2:ℕ) = 2 ^ 1 := by norm_num
+          _ ≤ 2 ^ emptyCountIn color Finset.univ p₁ := pow_two_le_pow_two (by omega)
+      have hp2 : (2 : ℕ) ≤ 2 ^ emptyCountIn color Finset.univ p₂ := by
+        have h2 := he2
+        calc (2:ℕ) = 2 ^ 1 := by norm_num
+          _ ≤ 2 ^ emptyCountIn color Finset.univ p₂ := pow_two_le_pow_two (by omega)
+      omega
+    have hpair : (2 ^ emptyCountIn color Finset.univ p₁ - 1)
+        + (2 ^ emptyCountIn color Finset.univ p₂ - 1)
+        = ∑ p ∈ ({p₁, p₂} : Finset V),
+            (2 ^ emptyCountIn color Finset.univ p - 1) := by
+      rw [Finset.sum_insert
+        (show p₁ ∉ ({p₂} : Finset V) from fun h => hpneV (Finset.mem_singleton.mp h))]
+      rw [Finset.sum_singleton]
+    calc (2 : ℕ) ≤ (2 ^ emptyCountIn color Finset.univ p₁ - 1)
+            + (2 ^ emptyCountIn color Finset.univ p₂ - 1) := h2le
+      _ = ∑ p ∈ ({p₁, p₂} : Finset V),
+            (2 ^ emptyCountIn color Finset.univ p - 1) := hpair
+      _ ≤ ∑ p ∈ Finset.univ, (2 ^ emptyCountIn color Finset.univ p - 1) :=
+            Finset.sum_le_sum_of_subset (Finset.subset_univ _)
+  omega
