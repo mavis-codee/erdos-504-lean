@@ -855,3 +855,153 @@ lemma scb_of_no_extremal {n : ℕ} (hn : 3 ≤ n)
   obtain ⟨T, hTsub, hTcard⟩ := Finset.exists_subset_card_eq hle
   refine H T hTcard fun p hp q hq r hr hpq hrq => ?_
   exact hangle p (hTsub hp) q (hTsub hq) r (hTsub hr) hpq hrq
+
+
+/-! ## Hull windows -/
+
+/-- The cyclic successor is never the cyclic predecessor. -/
+lemma finRotate_ne_symm {k : ℕ} (hk3 : 3 ≤ k) (i : Fin k) :
+    finRotate k i ≠ (finRotate k).symm i := by
+  intro h
+  have h2 : finRotate k ((finRotate k).symm i) = i :=
+    Equiv.apply_symm_apply (finRotate k) i
+  rw [← h] at h2
+  have h5 : ((finRotate k (finRotate k i) : Fin k) : ℕ) = (i : ℕ) :=
+    congrArg (fun j : Fin k => (j : ℕ)) h2
+  rw [finRotate_val, finRotate_val] at h5
+  rw [Nat.mod_add_mod] at h5
+  have h4 : ((i : ℕ) + 2) % k = (i : ℕ) := h5
+  rcases Nat.lt_or_ge ((i : ℕ) + 2) k with hlt | hge
+  · rw [Nat.mod_eq_of_lt hlt] at h4
+    omega
+  · have hdiv : k * (((i : ℕ) + 2) / k) = 2 := by
+      have h6 := Nat.mod_add_div ((i : ℕ) + 2) k
+      rw [h4] at h6
+      omega
+    have hk2 : k ≤ 2 := by
+      rcases Nat.eq_zero_or_pos (((i : ℕ) + 2) / k) with h0 | hp
+      · rw [h0] at hdiv
+        simp at hdiv
+      · have hle : k ≤ k * (((i : ℕ) + 2) / k) := Nat.le_mul_of_pos_right _ hp
+        omega
+    omega
+
+/-- The angle at `c` between two points given in polar form around `c`, with
+the second direction obtained by adding `A ∈ [0, π)`. -/
+lemma angle_polar_eq {a b c : ℂ} {r s θ A : ℝ}
+    (hr : 0 < r) (hs : 0 < s) (hA : 0 ≤ A) (hAπ : A < π)
+    (ha : a - c = (r : ℂ) * Complex.exp ((θ : ℂ) * Complex.I))
+    (hb : b - c = (s : ℂ) * Complex.exp (((θ + A : ℝ) : ℂ) * Complex.I)) :
+    EuclideanGeometry.angle a c b = A := by
+  have hbridge : EuclideanGeometry.angle a c b
+      = InnerProductGeometry.angle (a - c) (b - c) := by
+    simp [EuclideanGeometry.angle, vsub_eq_sub]
+  rw [hbridge, ha, hb]
+  rw [angle_eq_abs_arg (mul_ne_zero (Complex.ofReal_ne_zero.mpr (ne_of_gt hr))
+      (Complex.exp_ne_zero _))
+    (mul_ne_zero (Complex.ofReal_ne_zero.mpr (ne_of_gt hs)) (Complex.exp_ne_zero _))]
+  have hexp : (starRingEnd ℂ) ((r : ℂ) * Complex.exp ((θ : ℂ) * Complex.I))
+      * ((s : ℂ) * Complex.exp (((θ + A : ℝ) : ℂ) * Complex.I))
+      = ((r * s : ℝ) : ℂ) * Complex.exp ((A : ℂ) * Complex.I) := by
+    rw [map_mul, Complex.conj_ofReal]
+    calc ((r : ℂ) * (starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I)))
+        * ((s : ℂ) * Complex.exp (((θ + A : ℝ) : ℂ) * Complex.I))
+        = ((r * s : ℝ) : ℂ)
+          * ((starRingEnd ℂ) (Complex.exp ((θ : ℂ) * Complex.I))
+            * Complex.exp (((θ + A : ℝ) : ℂ) * Complex.I)) := by
+          push_cast
+          ring
+      _ = ((r * s : ℝ) : ℂ) * Complex.exp ((A : ℂ) * Complex.I) := by
+          rw [conj_exp_mul_exp]
+  rw [hexp, arg_of_polar (mul_pos hr hs) (by linarith) (by linarith), abs_of_nonneg hA]
+
+/-- **The hull window package.**  Along the cyclic enumeration of the extreme
+points, every vertex carries a window of aperture `< π (1 - 1/n)` starting at
+the direction to its cyclic successor and ending at the direction to its
+cyclic predecessor. -/
+lemma exists_hull_windows {n : ℕ} (hn : 3 ≤ n) {S : Finset ℂ}
+    (hangle : ∀ p ∈ S, ∀ q ∈ S, ∀ r ∈ S, p ≠ q → r ≠ q →
+      EuclideanGeometry.angle p q r < (1 - 1 / (n : ℝ)) * π)
+    (hgen : ∀ a ∈ S, ∀ b ∈ S, ∀ c ∈ S, a ≠ b → b ≠ c → a ≠ c →
+      ¬ Collinear ℝ ({a, b, c} : Set ℂ))
+    {m : ℕ} (w : Fin m → ℂ)
+    (hmem : ∀ i, w i ∈ extremeFinset S)
+    (hsur : ∀ v ∈ extremeFinset S, ∃ i, w i = v)
+    (hmono : StrictMono (fun i => Complex.arg (w i - szCentroid S)))
+    (hm3 : 3 ≤ m) :
+    ∃ θ A : Fin m → ℝ, (∀ i, 0 ≤ A i) ∧ (∀ i, A i < π) ∧
+      (∀ i, A i < (1 - 1 / (n : ℝ)) * π) ∧
+      (∀ i, ∀ q ∈ S, q ≠ w i → ∃ r t : ℝ, 0 < r ∧ 0 ≤ t ∧ t ≤ A i ∧
+        q - w i = (r : ℂ) * Complex.exp (((θ i + t : ℝ) : ℂ) * Complex.I)) ∧
+      (∀ i, w (finRotate m i) - w i
+        = ((‖w (finRotate m i) - w i‖ : ℝ) : ℂ)
+          * Complex.exp ((θ i : ℂ) * Complex.I)) ∧
+      (∀ i, w ((finRotate m).symm i) - w i
+        = ((‖w ((finRotate m).symm i) - w i‖ : ℝ) : ℂ)
+          * Complex.exp (((θ i + A i : ℝ) : ℂ) * Complex.I)) := by
+  classical
+  have hk : 0 < m := by omega
+  have hinj : Function.Injective w := fun x y hxy =>
+    hmono.injective (show (fun j => Complex.arg (w j - szCentroid S)) x
+      = (fun j => Complex.arg (w j - szCentroid S)) y from by simp only [hxy])
+  have himg : Finset.univ.image w = extremeFinset S := by
+    apply Finset.ext
+    intro x
+    simp only [Finset.mem_image, Finset.mem_univ, true_and]
+    constructor
+    · rintro ⟨i, -, rfl⟩
+      exact hmem i
+    · intro hx
+      obtain ⟨i, hi⟩ := hsur x hx
+      exact ⟨i, hi⟩
+  have hcardm : (extremeFinset S).card = m := by
+    rw [← himg, Finset.card_image_of_injective _ hinj, Finset.card_univ,
+      Fintype.card_fin]
+  have hEsub : extremeFinset S ⊆ S := fun p hp => mem_of_mem_extremeFinset hp
+  have hS3 : 3 ≤ S.card := by
+    have hle := Finset.card_le_card hEsub
+    calc 3 ≤ m := hm3
+      _ = (extremeFinset S).card := hcardm.symm
+      _ ≤ S.card := hle
+  have hhex : ∀ i, ∃ q ∈ S, q ≠ w i := by
+    intro i
+    obtain ⟨a, ha, b, hb, c, hc, hab, hbc, hac⟩ := exists_three_distinct_sc hS3
+    by_cases hac' : a = w i
+    · exact ⟨c, hc, by rw [← hac']; exact Ne.symm hac⟩
+    · exact ⟨a, ha, hac'⟩
+  have hwin_ex : ∀ i : Fin m, ∃ θ A : ℝ, 0 ≤ A ∧ A < π ∧
+      (∀ q ∈ S, q ≠ w i → ∃ r t : ℝ, 0 < r ∧ 0 ≤ t ∧ t ≤ A ∧
+        q - w i = (r : ℂ) * Complex.exp (((θ + t : ℝ) : ℂ) * Complex.I)) ∧
+      (∃ a ∈ S, a ≠ w i ∧ a - w i = ((‖a - w i‖ : ℝ) : ℂ)
+          * Complex.exp ((θ : ℂ) * Complex.I)) ∧
+      (∃ b ∈ S, b ≠ w i ∧ b - w i = ((‖b - w i‖ : ℝ) : ℂ)
+          * Complex.exp (((θ + A : ℝ) : ℂ) * Complex.I)) := fun i =>
+    exists_window_at_extreme (mem_of_mem_extremeFinset (hmem i)) (hhex i)
+      (mem_extremeFinset.mp (hmem i))
+  choose θ A hA0 hAπ hwin haform hbform using hwin_ex
+  refine ⟨θ, A, hA0, hAπ, ?_, hwin, ?_, ?_⟩
+  · intro i
+    obtain ⟨a, haS, hav, haform'⟩ := haform i
+    obtain ⟨b, hbS, hbv, hbform'⟩ := hbform i
+    have hang : EuclideanGeometry.angle a (w i) b = A i :=
+      angle_polar_eq (r := ‖a - w i‖) (s := ‖b - w i‖) (θ := θ i) (A := A i)
+        (norm_pos_iff.mpr (sub_ne_zero.mpr hav))
+        (norm_pos_iff.mpr (sub_ne_zero.mpr hbv))
+        (hA0 i) (hAπ i) haform' hbform'
+    have hlt := hangle a haS (w i) (mem_of_mem_extremeFinset (hmem i)) b hbS
+      hav hbv
+    rwa [hang] at hlt
+  · intro i
+    obtain ⟨a, haS, hav, haform'⟩ := haform i
+    have hsu : w (finRotate m i) = a :=
+      succ_eq_window_start hS3 hgen w hmem hsur hmono hk hm3 i haS hav (hAπ i)
+        (hwin i) haform'
+    rw [hsu]
+    exact haform'
+  · intro i
+    obtain ⟨b, hbS, hbv, hbform'⟩ := hbform i
+    have hpr : w ((finRotate m).symm i) = b :=
+      pred_eq_window_end hS3 hgen w hmem hsur hmono hk hm3 i hbS hbv (hAπ i)
+        (hwin i) hbform'
+    rw [hpr]
+    exact hbform'
