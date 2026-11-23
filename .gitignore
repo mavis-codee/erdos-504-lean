@@ -8,3 +8,12 @@ build/
 .lake/
 lake-packages/
 .env
+
+# The Phase-1a Sendov skeleton is deliberately NOT version-controlled: it
+# contains `sorry` placeholders for the three ingredients of Sendov's (1995)
+# determination of alpha_N that are not proved yet (the two counting bounds
+# and the extremal construction).  Keeping it out of git and out of the
+# library build makes sure that no `sorry` can reach a commit, a pull request
+# or an axiom audit.  Remove this entry only once those three ingredients are
+# genuinely proved.
+Erdos504Formal/Erdos504Sendov.lean
