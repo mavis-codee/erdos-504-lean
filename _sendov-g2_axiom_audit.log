@@ -1,0 +1,5 @@
+'Erdos504.angle_sum_interior' depends on axioms: [propext, Classical.choice, Quot.sound]
+
+--- STDERR ---
+warning: mathlib: repository 'E:\erdos504-grind\.lake/packages\mathlib' has local changes
+warning: batteries: repository 'E:\erdos504-grind\.lake/packages\batteries' has local changes

@@ -9,6 +9,25 @@
 
 ---
 
+## ⚠ 更正（2026-11-24，spike 会话丢失后由主对话核对）
+
+原 §4 的表格**过度声称**：它把 `exists_angle_ge_two_pi_div_three_of_interior` 与
+`sendov_counting_bound_n3` 列为「已证」，但**这两个定理从未写进 Lean 文件**——
+spike 会话在写完 `angle_sum_interior` 之后丢失。核对结果：
+
+| 声明 | 原状态声称 | 实际状态（2026-11-24 核对） |
+| --- | --- | --- |
+| `angle_sum_interior` | 已证 | **已证并机器核验**：`Erdos504Formal/Erdos504SendovSpike.lean`，`lake env lean` 0 error，公理审计 `[propext, Classical.choice, Quot.sound]`（日志 `_sendov-g2_axiom_audit.log`） |
+| `exists_angle_ge_two_pi_div_three_of_interior` | 已证 | **未写入**（数学路线正确：内点 ⇒ 角 `≥ 2π/3`，待形式化） |
+| `sendov_counting_bound_n3` | 已证 | **未写入**（路线正确：`n = 3` 时「无内点 ⟹ 凸位置 ⟹ `\|S\| ≤ 2·3−1 = 5`」，待形式化） |
+
+§1 的结构解剖与 §3 的路线评估**经逐行核对属实**（`emptyCount_sum_le` L359、
+`scb_of_no_extremal` L845、`hull_card_le` L1662、`exists_isolated_hull_vertex` L1854、
+`exists_interior_point` L2019、`exists_isolated_interior` L2404、关键行
+L2782 `hN : (Finset.univ : Finset V).card + 1 = 2 ^ n` 均与原文一致），仍然有效并保留。
+
+---
+
 ## 0. 状态摘要（先说结论）
 
 | 项 | 状态 |
@@ -192,9 +211,9 @@ Sendov 的界需要「角度**等于**阈值就够」的版本。
 
 | 声明 | 内容 | 状态 |
 | --- | --- | --- |
-| `angle_sum_interior` | `x` 严格在三角形 `a b c` 内 ⟹ `∠axb + ∠bxc + ∠cxa = 2π` | 已证 |
-| `exists_angle_ge_two_pi_div_three_of_interior` | `q` 非 `conv S` 的顶点（一般位置）⟹ 存在 `p, r ∈ S` 使 `∠pqr ≥ 2π/3` | 已证 |
-| `sendov_counting_bound_n3` | 全角 `< 2π/3` ⟹ `\|S\| ≤ 5 = 2^(3−1) + 2^(3−3)` | 已证 |
+| `angle_sum_interior` | `x` 严格在三角形 `a b c` 内 ⟹ `∠axb + ∠bxc + ∠cxa = 2π` | **已证**（文件内，0 error，公理审计仅三条标准公理） |
+| `exists_angle_ge_two_pi_div_three_of_interior` | `q` 非 `conv S` 的顶点（一般位置）⟹ 存在 `p, r ∈ S` 使 `∠pqr ≥ 2π/3` | **未写入**（见顶部更正；路线已定，待形式化） |
+| `sendov_counting_bound_n3` | 全角 `< 2π/3` ⟹ `\|S\| ≤ 5 = 2^(3−1) + 2^(3−3)` | **未写入**（见顶部更正；路线已定，待形式化） |
 
 **覆盖范围声明（精确）**：本文件**只**覆盖 Sendov 计数界在 `n = 3` 时的特例；
 `n ≥ 4` 的 `2^(n−1) + 2^(n−3)` **未证**。
