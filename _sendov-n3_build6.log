@@ -1,0 +1,5 @@
+'Erdos504.convexHull_eq_convexHull_extremePoints' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Erdos504.angle_eq_pi_of_combination' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Erdos504.exists_angle_ge_two_pi_div_three_of_interior_point' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Erdos504.exists_angle_ge_two_pi_div_three_of_interior' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Erdos504.sendov_counting_bound_n3' depends on axioms: [propext, Classical.choice, Quot.sound]
