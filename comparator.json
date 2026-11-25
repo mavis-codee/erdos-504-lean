@@ -1,0 +1,6 @@
+{
+  "challenge_module": "Challenge",
+  "solution_module": "Solution",
+  "theorem_names": ["erdos_504", "erdos_504_endpoint"],
+  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
+}

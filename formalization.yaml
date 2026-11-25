@@ -1,0 +1,144 @@
+# formalization.yaml — adopted from https://github.com/mathlib-initiative/formalization.yaml
+version: "v0.4"
+project:
+  name: "Erdős Problem 504 (Blumenthal's problem): the minimax angle of a planar point set — Lean 4 formalization"
+  description: >-
+    A Lean 4 formalization, against Mathlib, of the minimax-angle statement of
+    Erdős Problem #504 (Blumenthal's problem): for n ≥ 3 the largest angle that
+    every planar set of 2^n points must determine is π(1 − 1/n), and the same
+    value holds for 2^n − 1 points (endpoint form).  The minimax angle α_N is
+    defined as the supremum of the angles guaranteed in every N-point set; the
+    compared theorems identify this supremum with the Erdős–Szekeres value.
+    The mathematical content is the published results of Szekeres (1941)
+    (lower bound and upper-bound construction) and Erdős–Szekeres (1960,
+    Theorem 1); the development adds the supremum identification and the
+    endpoint case.  All compared theorems are sorry-free and depend only on
+    propext, Classical.choice and Quot.sound.
+  authors:
+    - "Li Xiang"
+  license: "Apache-2.0"
+  responsible_maintainers:
+    - "Li Xiang"
+classification:
+  arxiv: [math.MG, math.CO]
+  msc2020: ["52C10", "52A10", "51M16"]
+status:
+  scope: >-
+    COMPLETE for the two compared theorems.  The only sorries in the repository
+    are the two deliberate holes in Challenge.lean (the Comparator convention);
+    Solution.lean and the Erdos504Formal development library are sorry-free, and
+    the compared theorems depend on exactly propext, Classical.choice and
+    Quot.sound (checked with #print axioms).  Separate Sendov counting-bound
+    increments (n=3 closed; general case open) live in the same repository but
+    are NOT part of the compared statements.
+  sorry_count: 0
+  sorry_in_definitions: 0
+  axioms: ["propext", "Classical.choice", "Quot.sound"]
+  main_results:
+    - declaration: "Erdos504Palomar.erdos_504"
+      file: "Solution.lean"
+      sorry_count: 0
+      axioms: ["propext", "Classical.choice", "Quot.sound"]
+      comparator_config: "comparator.json"
+    - declaration: "Erdos504Palomar.erdos_504_endpoint"
+      file: "Solution.lean"
+      sorry_count: 0
+      axioms: ["propext", "Classical.choice", "Quot.sound"]
+      comparator_config: "comparator.json"
+fidelity:
+  divergences: >-
+    The statements of record use the supremum definition of the minimax angle
+    (α_N = sSup of guaranteed angles), which makes the Erdős–Szekeres value an
+    exact equality rather than a two-sided bound; the endpoint case N = 2^n − 1
+    is added.  The proof follows Szekeres (1941) and Erdős–Szekeres (1960)
+    Theorem 1; the degenerate witness p = r is excluded explicitly.  No
+    simplification changes the mathematical content of the compared statements.
+sources:
+  - title: "On an extremum problem in the plane"
+    authors: ["George Szekeres"]
+    type: "paper"
+    id: "https://doi.org/10.2307/2371290"
+    location: "Amer. J. Math. 63 (1941), 208-210"
+    relationship: formalizes
+    note: "Lower bound and upper-bound construction for the minimax angle."
+  - title: "On some extremum problems in elementary geometry"
+    authors: ["Paul Erdős", "George Szekeres"]
+    type: "paper"
+    id: "https://www.erdosproblems.com/bibs/ErSz60"
+    location: "Ann. Univ. Sci. Budapest. Eötvös Sect. Math. 3 (1960/61), 53-62, Theorem 1"
+    relationship: formalizes
+    note: "The exact minimax value for 2^n points."
+  - title: "Erdős Problem #504 (erdosproblems.com)"
+    authors: ["Thomas F. Bloom (site)"]
+    contributors:
+      - name: "Paul Erdős"
+        role: "problem-proposer"
+    type: "web discussion"
+    id: "https://www.erdosproblems.com/504"
+    relationship: background
+    note: "Canonical record of the problem and its status."
+  - title: "Minimax of the angles in a plane configuration of points"
+    authors: ["Blagovest Sendov"]
+    type: "paper"
+    id: "https://doi.org/10.1007/BF01874605"
+    location: "Acta Math. Hungar. 69 (1995), 27-46"
+    relationship: background
+    note: >-
+      Source of the generalized-configuration counting framework used by the
+      separate Sendov increments in this repository; NOT a dependency of the
+      compared theorems.  A private machine-verified correction note on Lemma 4.1
+      of this paper exists in the authors' records and is not part of this submission.
+related_formalizations:
+  - id: "https://github.com/ToshiDad/erdos-504"
+    relationship: builds-on
+    note: >-
+      The sorry-free core (Szekeres lower bound, upper construction,
+      Erdős–Szekeres 1960) is republished unchanged from this repository with
+      attribution (see ATTRIBUTION.md); the upstream repository declares no
+      license, which is recorded as a limitation below.
+  - id: "https://github.com/leanprover-community/mathlib4"
+    relationship: builds-on
+    note: "Mathlib pinned at v4.33.0 via lake-manifest.json."
+automation:
+  methods:
+    - method: agent
+      role: "AI-assisted Lean development under the author's direction and review."
+    - method: manual
+      role: "Author-directed statement audit, independent re-verification and axiom sweeps."
+review:
+  status: self-assessed
+  reviewers:
+    - "Li Xiang"
+  notes: >-
+    The author reviewed the statements of record in Challenge.lean against the
+    published sources.  Proofs are checked by Lean 4.33.0 and by an independent
+    re-run of the whole development plus #print axioms sweeps; no external human
+    peer review of the Lean development has been performed.
+alignment:
+  namespace: "Erdos504Palomar"
+  statements:
+    - source: "Szekeres 1941 / Erdős–Szekeres 1960, minimax value for 2^n points"
+      lean: "Erdos504Palomar.erdos_504"
+      module: "Solution"
+      status: proved
+    - source: "endpoint case N = 2^n − 1"
+      lean: "Erdos504Palomar.erdos_504_endpoint"
+      module: "Solution"
+      status: proved
+limitations:
+  - >-
+    No novelty is claimed for the compared theorems beyond the published results
+    they formalize; the mathematics is Szekeres's and Erdős–Szekeres's.
+  - >-
+    The republished core originates from ToshiDad/erdos-504, which declares no
+    license; attribution is given in ATTRIBUTION.md and the authors of this
+    submission license their own additions Apache-2.0.  Palomar editorial review
+    may request clarification of the upstream provenance.
+  - >-
+    The separate Sendov counting-bound general case is open (the published 1995
+    proof of the counting lemma has a machine-verified counterexample to its
+    fixed-s induction step); it is not part of the compared statements.
+acknowledgements: >-
+  The core formalization is republished from ToshiDad/erdos-504 with attribution;
+  the minimax-supremum identification and endpoint case were developed by the
+  submitter with AI assistance under author direction.
