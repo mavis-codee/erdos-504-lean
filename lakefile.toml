@@ -1,6 +1,6 @@
 name = "erdos504"
 version = "0.1.0"
-defaultTargets = ["Erdos504Formal"]
+defaultTargets = ["Erdos504Formal", "Palomar"]
 
 [leanOptions]
 pp.unicode.fun = true
@@ -12,3 +12,9 @@ rev = "v4.33.0"
 
 [[lean_lib]]
 name = "Erdos504Formal"
+
+# Palomar Comparator modules live at the repository root.
+[[lean_lib]]
+name = "Palomar"
+srcDir = "."
+roots = ["Challenge", "Solution"]
