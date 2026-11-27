@@ -111,6 +111,38 @@ lake env lean Erdos504Formal/Erdos504Endpoint.lean
 lake env lean Erdos504Formal/AuditBridge.lean
 ```
 
+## Lean CI
+
+[![Lean verify](https://github.com/mavis-codee/erdos-504-lean/actions/workflows/lean-verify.yml/badge.svg)](https://github.com/mavis-codee/erdos-504-lean/actions/workflows/lean-verify.yml)
+
+The workflow builds `Erdos504Formal` and `Palomar`, audits the main and
+endpoint theorems, the Sendov `n = 3` theorem, and the three Se95 bridge
+counterexamples, and checks the proof sources for forbidden tokens. Run these
+commands from the repository root with the pinned toolchain and Python 3.
+
+```bash
+lake exe cache get
+lake --no-cache build Erdos504Formal Palomar +Erdos504Formal.Erdos504SendovN3 +Erdos504Formal.Erdos504SendovSe95Bridge
+python3 scripts/lean_verify.py audit
+python3 scripts/lean_verify.py guard
+```
+
+The source guard allows the two comparator placeholders in `Challenge.lean`.
+Running it in a working tree that contains the Git-ignored local research file
+`Erdos504Formal/Erdos504Sendov.lean` reports its three `sorry` placeholders.
+A checkout that runs the build and audit must include the `Erdos504SendovStage1`,
+`Erdos504SendovSpikeA`, `Erdos504SendovSe95Correction`, and
+`Erdos504SendovSe95Bridge` modules.
+
+### Priority note
+
+The gap in Sendov's Lemma 4.1 (the asserted maxima for `s = 4`) was first
+publicly reported by NoahPuckett-IO in `teorth/erdosproblems#494` on 2026-10-26.
+This development independently supplies exact-coordinate counterexamples,
+Lean machine checks, and a refutation of the published proof along the
+Lemma 4.1 to Lemma 4.2 to Theorem 4.1 chain.
+[Original report](https://github.com/teorth/erdosproblems/issues/494)
+
 ## Axiom audit
 
 The library uses only the three standard Lean foundations. To check:

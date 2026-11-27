@@ -1,0 +1,49 @@
+name: Lean verify
+
+on:
+  push:
+    branches:
+      - main
+      - 'feat/*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-audit:
+    name: Lake build and axiom audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up the pinned Lean toolchain
+        uses: leanprover/lean-action@v1
+        with:
+          auto-config: 'false'
+          build: 'false'
+          test: 'false'
+          lint: 'false'
+          use-github-cache: 'false'
+          use-mathlib-cache: 'false'
+      - name: Fetch the Mathlib cache
+        run: lake exe cache get
+      - name: Build both libraries and the audited Sendov modules
+        run: >-
+          lake --no-cache build Erdos504Formal Palomar
+          +Erdos504Formal.Erdos504SendovN3
+          +Erdos504Formal.Erdos504SendovSe95Bridge
+      - name: Audit axioms of the six public results
+        run: python3 scripts/lean_verify.py audit
+
+  source-guard:
+    name: Lean source guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check proof sources for forbidden tokens
+        run: python3 scripts/lean_verify.py guard
